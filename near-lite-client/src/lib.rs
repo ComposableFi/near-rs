@@ -8,3 +8,4 @@
 mod client;
 mod signature;
 mod storage;
+mod verifier;
