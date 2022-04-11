@@ -60,7 +60,7 @@ mod tests {
             }
         }
 
-        pub fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
+        fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
             Self {
                 block_producers_per_epoch: [(checkpoint.epoch_id, checkpoint.next_bps)]
                     .into_iter()
@@ -86,6 +86,19 @@ mod tests {
     #[test]
     fn test_mock_light_client() {
         let mut mock_light_client = MockLightClient::<DummyStateStorage, DummyVerificator>::new();
+        assert!(mock_light_client.validate_and_update_head());
+    }
+
+    #[test]
+    fn test_mock_light_with_checkpoint() {
+        let mut mock_light_client =
+            MockLightClient::<DummyStateStorage, DummyVerificator>::with_checkpoint(
+                TrustedCheckpoint {
+                    epoch_id: vec![],
+                    height: 0,
+                    next_bps: vec![],
+                },
+            );
         assert!(mock_light_client.validate_and_update_head());
     }
 }
