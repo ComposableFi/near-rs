@@ -1,15 +1,11 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use crate::{
-    signature::{Signature, SignatureVerificatiion},
+    checkpoint::TrustedCheckpoint,
+    signature::SignatureVerificatiion,
     storage::StateStorage,
+    types::{BlockProducer, EpochId},
 };
-
-#[allow(dead_code)]
-type EpochId = usize;
-
-#[allow(dead_code)]
-type BlockProducer = Signature;
 
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
@@ -26,6 +22,20 @@ pub struct LightClient<S: StateStorage, V: SignatureVerificatiion> {
     _v: PhantomData<V>,
 }
 
+impl<S: StateStorage, V: SignatureVerificatiion> LightClient<S, V> {
+    pub fn with_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
+        Self {
+            relevant_epochs,
+            block_producers_per_epoch: [(checkpoint.epoch_id, checkpoint.next_bps)]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+
+            _s: PhantomData::default(),
+            _v: PhantomData::default(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -35,6 +45,8 @@ mod tests {
     };
 
     struct MockLightClient<S: StateStorage, V: SignatureVerificatiion> {
+        /// set of validators that can sign a mined block
+        block_producers_per_epoch: HashMap<EpochId, Vec<BlockProducer>>,
         _s: PhantomData<S>,
         _v: PhantomData<V>,
     }
@@ -42,6 +54,18 @@ mod tests {
     impl<S: StateStorage, V: SignatureVerificatiion> MockLightClient<S, V> {
         fn new() -> Self {
             Self {
+                block_producers_per_epoch: HashMap::new(),
+                _s: PhantomData::default(),
+                _v: PhantomData::default(),
+            }
+        }
+
+        pub fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
+            Self {
+                block_producers_per_epoch: [(checkpoint.epoch_id, checkpoint.next_bps)]
+                    .into_iter()
+                    .collect::<HashMap<_, _>>(),
+
                 _s: PhantomData::default(),
                 _v: PhantomData::default(),
             }
