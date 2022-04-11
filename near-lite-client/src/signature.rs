@@ -1,4 +1,4 @@
-pub(crate) type Signature = [u8; 32];
+use crate::types::Signature;
 
 pub trait SignatureVerificatiion {
     fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool;
