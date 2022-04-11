@@ -5,6 +5,7 @@
 //! 1. verify the chain's state transitions and keep a subset of the state
 //! 2. verify that a transaction belongs to a vald block
 
+mod block_validation;
 mod checkpoint;
 pub mod client;
 mod signature;

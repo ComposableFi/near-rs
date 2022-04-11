@@ -1,6 +1,6 @@
 use crate::types::Signature;
 
-pub trait SignatureVerificatiion {
+pub trait SignatureVerification {
     fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool;
 }
 
@@ -8,7 +8,7 @@ pub trait SignatureVerificatiion {
 pub struct DummyVerificator {}
 
 #[cfg(test)]
-impl SignatureVerificatiion for DummyVerificator {
+impl SignatureVerification for DummyVerificator {
     fn verify(&self, _data: impl AsRef<[u8]>, _public_keys: impl AsRef<[Signature]>) -> bool {
         true
     }

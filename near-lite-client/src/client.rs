@@ -1,8 +1,8 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use crate::{
+    block_validation::BlockValidation,
     checkpoint::TrustedCheckpoint,
-    signature::SignatureVerificatiion,
     storage::StateStorage,
     types::{BlockProducer, EpochId},
 };
@@ -11,7 +11,7 @@ use crate::{
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
 #[allow(dead_code)]
-pub struct LightClient<S: StateStorage, V: SignatureVerificatiion> {
+pub struct LightClient<S: StateStorage, V: BlockValidation> {
     /// how many epochs the light client will track
     relevant_epochs: usize,
 
@@ -22,7 +22,7 @@ pub struct LightClient<S: StateStorage, V: SignatureVerificatiion> {
     _v: PhantomData<V>,
 }
 
-impl<S: StateStorage, V: SignatureVerificatiion> LightClient<S, V> {
+impl<S: StateStorage, V: BlockValidation> LightClient<S, V> {
     pub fn with_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
         Self {
             relevant_epochs,
@@ -40,18 +40,18 @@ impl<S: StateStorage, V: SignatureVerificatiion> LightClient<S, V> {
 mod tests {
     use super::*;
     use crate::{
-        signature::DummyVerificator, storage::DummyStateStorage,
+        block_validation::Sha256Digest, signature::DummyVerificator, storage::DummyStateStorage,
         verifier::StateTransitionVerificator,
     };
 
-    struct MockLightClient<S: StateStorage, V: SignatureVerificatiion> {
+    struct MockLightClient<S: StateStorage, V: BlockValidation> {
         /// set of validators that can sign a mined block
         block_producers_per_epoch: HashMap<EpochId, Vec<BlockProducer>>,
         _s: PhantomData<S>,
         _v: PhantomData<V>,
     }
 
-    impl<S: StateStorage, V: SignatureVerificatiion> MockLightClient<S, V> {
+    impl<S: StateStorage, V: BlockValidation> MockLightClient<S, V> {
         fn new() -> Self {
             Self {
                 block_producers_per_epoch: HashMap::new(),
@@ -72,9 +72,7 @@ mod tests {
         }
     }
 
-    impl<S: StateStorage, V: SignatureVerificatiion> StateTransitionVerificator
-        for MockLightClient<S, V>
-    {
+    impl<S: StateStorage, V: BlockValidation> StateTransitionVerificator for MockLightClient<S, V> {
         type V = V;
         type S = S;
 
@@ -85,14 +83,14 @@ mod tests {
 
     #[test]
     fn test_mock_light_client() {
-        let mut mock_light_client = MockLightClient::<DummyStateStorage, DummyVerificator>::new();
+        let mut mock_light_client = MockLightClient::<DummyStateStorage, Sha256Digest>::new();
         assert!(mock_light_client.validate_and_update_head());
     }
 
     #[test]
     fn test_mock_light_with_checkpoint() {
         let mut mock_light_client =
-            MockLightClient::<DummyStateStorage, DummyVerificator>::with_checkpoint(
+            MockLightClient::<DummyStateStorage, Sha256Digest>::with_checkpoint(
                 TrustedCheckpoint {
                     epoch_id: vec![],
                     height: 0,

@@ -1,7 +1,7 @@
-use crate::{signature::SignatureVerificatiion, storage::StateStorage};
+use crate::{block_validation::BlockValidation, storage::StateStorage};
 
 pub trait StateTransitionVerificator {
-    type V: SignatureVerificatiion;
+    type V: BlockValidation;
     type S: StateStorage;
 
     fn validate_and_update_head(&mut self) -> bool;
