@@ -1,7 +1,7 @@
 use crate::{
     block_validation::{BlockValidation, Digest},
     storage::StateStorage,
-    types::{CryptoHash, LightClientBlockView},
+    types::{ApprovalInner, CryptoHash, LightClientBlockView},
 };
 
 pub trait StateTransitionVerificator: StateStorage {
@@ -20,7 +20,7 @@ pub trait StateTransitionVerificator: StateStorage {
     }
 }
 
-fn reconstruct_light_client_block_view_fields(
+fn reconstruct_light_client_block_view_fields<D: Digest>(
     block_view: &LightClientBlockView,
 ) -> (CryptoHash, CryptoHash, Vec<u8>) {
     let current_block_hash = block_view.current_block_hash();
@@ -29,11 +29,18 @@ fn reconstruct_light_client_block_view_fields(
         ApprovalInner::Endorsement(next_block_hash)
             .try_to_vec()
             .unwrap(),
-        (block_view.inner_lite.height + 2)
-            .to_le()
-            .try_to_vec()
-            .unwrap(),
+        (block_view.inner_lite.height + 2).to_le_bytes(), // TODO: double check this one
     ]
     .concat();
     (current_block_hash, next_block_hash, approval_message)
+}
+
+pub(crate) fn next_block_hash<D: Digest>(
+    next_block_inner_hash: CryptoHash,
+    current_block_hash: CryptoHash,
+) -> CryptoHash {
+    D::digest([next_block_inner_hash.as_ref(), current_block_hash.as_ref()].concat())
+        .as_slice()
+        .try_into()
+        .unwrap()
 }

@@ -96,8 +96,8 @@ pub trait BlockValidation {
             {
                 return false;
             }
-            true
         }
+        true
     }
 }
 
