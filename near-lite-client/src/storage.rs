@@ -1,5 +1,4 @@
 pub trait StateStorage {}
-
 #[cfg(test)]
 pub struct DummyStateStorage {}
 
