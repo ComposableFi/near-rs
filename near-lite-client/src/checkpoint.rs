@@ -5,24 +5,26 @@
 //! there's also the possiblity to feed the client with a checkpoint. A checkpoint
 //! is a state of the chain that's considered **valid**.
 
-use crate::types::{BlockProducer, BlockView, EpochId, ValidatorStakeView};
+use crate::types::LightClientBlockView;
 
-pub struct TrustedCheckpoint {
-    pub epoch_id: EpochId,
-    pub next_epoch_id: EpochId,
-    pub height: u64,
-    pub next_bps: Option<Vec<ValidatorStakeView>>,
-    pub approvals_after_next: Vec<Option<BlockProducer>>,
+pub struct TrustedCheckpoint(LightClientBlockView);
+
+#[cfg(test)]
+impl TrustedCheckpoint {
+    pub fn new() -> TrustedCheckpoint {
+        Self(LightClientBlockView {
+            prev_block_hash: todo!(),
+            next_block_inner_hash: todo!(),
+            inner_lite: todo!(),
+            inner_rest_hash: todo!(),
+            next_bps: todo!(),
+            approvals_after_next: todo!(),
+        })
+    }
 }
 
-impl From<&TrustedCheckpoint> for BlockView {
-    fn from(v: &TrustedCheckpoint) -> Self {
-        Self {
-            epoch_id: v.epoch_id.clone(),
-            next_epoch_id: v.next_epoch_id.clone(),
-            height: v.height,
-            next_bps: v.next_bps.clone(),
-            approvals_after_next: v.approvals_after_next.clone(),
-        }
+impl From<TrustedCheckpoint> for LightClientBlockView {
+    fn from(s: TrustedCheckpoint) -> Self {
+        s.0
     }
 }

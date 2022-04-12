@@ -4,11 +4,17 @@ pub trait SignatureVerification {
     fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool;
 }
 
+impl SignatureVerification for Signature {
+    fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool {
+        // TODO: do a proper implementation here!
+        true
+    }
+}
 #[cfg(test)]
-pub struct DummyVerificator {}
+pub struct DummySignature {}
 
 #[cfg(test)]
-impl SignatureVerification for DummyVerificator {
+impl SignatureVerification for DummySignature {
     fn verify(&self, _data: impl AsRef<[u8]>, _public_keys: impl AsRef<[Signature]>) -> bool {
         true
     }
@@ -20,7 +26,7 @@ mod tests {
 
     #[test]
     fn test_dummy_verificator() {
-        let dummy_verificator = DummyVerificator {};
-        dummy_verificator.verify(b"data", vec![[0; 32]]);
+        let signature = DummySignature {};
+        signature.verify(b"data", vec![[0; 32]]);
     }
 }
