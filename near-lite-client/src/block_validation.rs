@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     signature::SignatureVerification,
-    types::{ApprovalInner, CryptoHash, LightClientBlockView},
+    types::{ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView},
 };
+
+use borsh::BorshSerialize;
 
 #[cfg(test)]
 use sha2::{Digest as DigestTrait, Sha256};
@@ -15,7 +17,7 @@ pub trait BlockValidation {
         &self,
         head: &LightClientBlockView,
         block_view: &LightClientBlockView,
-        epoch_block_producers: &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>,
+        epoch_block_producers: &HashMap<CryptoHash, ValidatorStakeView>,
     ) -> bool {
         //The light client updates its head with the information from LightClientBlockView iff:
 
@@ -30,7 +32,7 @@ pub trait BlockValidation {
         // QUESTION: do we also want to pass the block hash received from the RPC?
         // it's not on the spec, but it's an extra validation
         let (_current_block_hash, _next_block_hash, approval_message) =
-            reconstruct_light_client_block_view_fields(block_view);
+            reconstruct_light_client_block_view_fields::<Self::Digest>(block_view);
 
         // (1)
         if block_view.inner_lite.height <= head.inner_lite.height {
@@ -60,8 +62,8 @@ pub trait BlockValidation {
             .iter()
             .zip(epoch_block_producers.iter())
         {
-            let validator_stake = block_producer.clone().into_validator_stake();
-            let bp_stake = validator_stake.stake();
+            let validator_stake = block_producer.1;
+            let bp_stake = validator_stake.stake;
             total_stake += bp_stake;
 
             if maybe_signature.is_none() {
@@ -70,9 +72,10 @@ pub trait BlockValidation {
 
             approved_stake += bp_stake;
 
+            let validator_public_key: [u8; 32] = validator_stake.public_key.try_into().unwrap();
             if !maybe_signature
                 .unwrap()
-                .verify(&approval_message, vec![validator_stake.public_key()])
+                .verify(&approval_message, vec![validator_public_key])
             {
                 return false;
             }
@@ -150,7 +153,7 @@ impl BlockValidation for Sha256Digest {
         &self,
         head: &LightClientBlockView,
         block_view: &LightClientBlockView,
-        epoch_block_producers: &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>,
+        epoch_block_producers: &HashMap<CryptoHash, ValidatorStakeView>,
     ) -> bool {
         true
     }

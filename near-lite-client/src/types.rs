@@ -1,4 +1,4 @@
-use std::error::Error;
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use crate::block_validation::Digest;
 
@@ -8,7 +8,7 @@ pub(crate) type Signature = [u8; 32];
 pub enum SignatureType {
     Ed25519,
 }
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, BorshSerialize, BorshDeserialize)]
 pub struct CryptoHash([u8; 32]);
 
 // TODO: improve error message
@@ -53,7 +53,7 @@ pub struct LightClientBlockView {
     pub approvals_after_next: Vec<Option<Signature>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct BlockHeaderInnerLiteView {
     pub height: BlockHeight,
     pub epoch_id: CryptoHash,
@@ -65,12 +65,13 @@ pub struct BlockHeaderInnerLiteView {
     pub block_merkle_root: CryptoHash,
 }
 
+#[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub enum ApprovalInner {
     Endorsement(CryptoHash),
     Skip(BlockHeight),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct ValidatorStakeView {
     pub account_id: AccountId,
     pub public_key: PublicKey,
@@ -78,9 +79,9 @@ pub struct ValidatorStakeView {
 }
 
 impl LightClientBlockView {
-    pub fn current_block_hash(&self) -> CryptoHash {
-        current_block_hash(
-            Sha256::digest(self.inner_lite.try_to_vec().unwrap())
+    pub fn current_block_hash<D: Digest>(&self) -> CryptoHash {
+        current_block_hash::<D>(
+            D::digest(self.inner_lite.try_to_vec().unwrap())
                 .as_slice()
                 .try_into()
                 .unwrap(),
@@ -114,6 +115,8 @@ fn current_block_hash<D: Digest>(
             ]
             .concat(),
         )
-        .as_slice(),
+        .as_slice()
+        .try_into()
+        .unwrap(),
     )
 }

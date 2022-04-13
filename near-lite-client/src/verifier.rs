@@ -4,6 +4,7 @@ use crate::{
     types::{ApprovalInner, CryptoHash, LightClientBlockView},
 };
 
+use borsh::BorshSerialize;
 pub trait StateTransitionVerificator: StateStorage {
     type V: BlockValidation;
     type D: Digest;
@@ -28,8 +29,9 @@ fn reconstruct_light_client_block_view_fields<D: Digest>(
     let approval_message = [
         ApprovalInner::Endorsement(next_block_hash)
             .try_to_vec()
-            .unwrap(),
-        (block_view.inner_lite.height + 2).to_le_bytes(), // TODO: double check this one
+            .unwrap()
+            .as_ref(),
+        (block_view.inner_lite.height + 2).to_le_bytes().as_ref(), // TODO: double check this one
     ]
     .concat();
     (current_block_hash, next_block_hash, approval_message)
