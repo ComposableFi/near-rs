@@ -1,14 +1,17 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-
 use crate::block_validation::Digest;
-
-pub(crate) type Signature = [u8; 32];
+use borsh::{BorshDeserialize, BorshSerialize};
+use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
 #[derive(Debug, Clone)]
 pub enum SignatureType {
     Ed25519,
 }
-#[derive(Debug, PartialEq, Eq, Hash, Clone, BorshSerialize, BorshDeserialize)]
+
+#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+pub struct PublicKey(pub [u8; 32]);
+pub type Signature = Ed25519Signature;
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize)]
 pub struct CryptoHash([u8; 32]);
 
 // TODO: improve error message
@@ -29,12 +32,15 @@ impl AsRef<[u8]> for CryptoHash {
     }
 }
 
+impl From<&PublicKey> for Ed25519Public {
+    fn from(pubkey: &PublicKey) -> Ed25519Public {
+        Ed25519Public(pubkey.0.clone())
+    }
+}
 pub struct EpochId(pub CryptoHash);
 pub type BlockHeight = u64;
 pub type AccountId = String;
 pub type Balance = u64;
-
-type PublicKey = Vec<u8>;
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
@@ -89,8 +95,31 @@ impl LightClientBlockView {
             self.prev_block_hash,
         )
     }
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        Self {
+            prev_block_hash: CryptoHash([0; 32]),
+            next_block_inner_hash: CryptoHash([0; 32]),
+            inner_lite: BlockHeaderInnerLiteView::new_for_test(),
+            inner_rest_hash: CryptoHash([0; 32]),
+            next_bps: None,
+            approvals_after_next: vec![],
+        }
+    }
 }
 
+impl LightClientBlockLiteView {
+    pub fn current_block_hash<D: Digest>(&self) -> CryptoHash {
+        current_block_hash::<D>(
+            D::digest(self.inner_lite.try_to_vec().unwrap())
+                .as_slice()
+                .try_into()
+                .unwrap(),
+            self.inner_rest_hash,
+            self.prev_block_hash,
+        )
+    }
+}
 /// The hash of the block is:
 /// ```ignore
 /// sha256(concat(
@@ -119,4 +148,20 @@ fn current_block_hash<D: Digest>(
         .try_into()
         .unwrap(),
     )
+}
+
+impl BlockHeaderInnerLiteView {
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        Self {
+            height: 1,
+            epoch_id: CryptoHash([0; 32]),
+            next_epoch_id: CryptoHash([0; 32]),
+            prev_state_root: CryptoHash([0; 32]),
+            outcome_root: CryptoHash([0; 32]),
+            timestamp: 1,
+            next_bp_hash: CryptoHash([0; 32]),
+            block_merkle_root: CryptoHash([0; 32]),
+        }
+    }
 }

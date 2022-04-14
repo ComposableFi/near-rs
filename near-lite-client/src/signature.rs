@@ -1,21 +1,23 @@
-use crate::types::Signature;
+use crate::types::{PublicKey, Signature};
+use sp_core::ed25519::Public as Ed25519Public;
+use sp_io::crypto::ed25519_verify;
 
 pub trait SignatureVerification {
-    fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool;
+    fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool;
 }
 
 impl SignatureVerification for Signature {
-    fn verify(&self, data: impl AsRef<[u8]>, public_keys: impl AsRef<[Signature]>) -> bool {
-        // TODO: do a proper implementation here!
-        true
+    fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
+        ed25519_verify(&self, data.as_ref(), &Ed25519Public::from(&public_key))
     }
 }
+
 #[cfg(test)]
-pub struct DummySignature {}
+pub struct DummySignature;
 
 #[cfg(test)]
 impl SignatureVerification for DummySignature {
-    fn verify(&self, _data: impl AsRef<[u8]>, _public_keys: impl AsRef<[Signature]>) -> bool {
+    fn verify(&self, _data: impl AsRef<[u8]>, _public_key: PublicKey) -> bool {
         true
     }
 }
@@ -27,6 +29,6 @@ mod tests {
     #[test]
     fn test_dummy_verificator() {
         let signature = DummySignature {};
-        signature.verify(b"data", vec![[0; 32]]);
+        signature.verify(b"data", PublicKey([0; 32]));
     }
 }

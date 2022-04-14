@@ -12,7 +12,7 @@ pub trait StateTransitionVerificator: StateStorage {
     fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {
         self.get_epoch_block_producers_mut().insert(
             block_view.inner_lite.next_epoch_id,
-            block_view.next_bps.unwrap().clone(),
+            block_view.next_bps.as_ref().unwrap().clone(),
         );
 
         let head = self.get_head();
@@ -24,8 +24,9 @@ pub trait StateTransitionVerificator: StateStorage {
 fn reconstruct_light_client_block_view_fields<D: Digest>(
     block_view: &LightClientBlockView,
 ) -> (CryptoHash, CryptoHash, Vec<u8>) {
-    let current_block_hash = block_view.current_block_hash();
-    let next_block_hash = next_block_hash(block_view.next_block_inner_hash, current_block_hash);
+    let current_block_hash = block_view.current_block_hash::<D>();
+    let next_block_hash =
+        next_block_hash::<D>(block_view.next_block_inner_hash, current_block_hash);
     let approval_message = [
         ApprovalInner::Endorsement(next_block_hash)
             .try_to_vec()

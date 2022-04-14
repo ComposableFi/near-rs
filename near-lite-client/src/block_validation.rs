@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     signature::SignatureVerification,
-    types::{ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView},
+    types::{ApprovalInner, CryptoHash, LightClientBlockView, PublicKey, ValidatorStakeView},
 };
 
 use borsh::BorshSerialize;
@@ -72,10 +72,12 @@ pub trait BlockValidation {
 
             approved_stake += bp_stake;
 
-            let validator_public_key: [u8; 32] = validator_stake.public_key.try_into().unwrap();
+            let validator_public_key: PublicKey =
+                validator_stake.public_key.clone().try_into().unwrap();
             if !maybe_signature
+                .as_ref()
                 .unwrap()
-                .verify(&approval_message, vec![validator_public_key])
+                .verify(&approval_message, validator_public_key)
             {
                 return false;
             }
@@ -107,8 +109,9 @@ pub trait BlockValidation {
 pub fn reconstruct_light_client_block_view_fields<D: Digest>(
     block_view: &LightClientBlockView,
 ) -> (CryptoHash, CryptoHash, Vec<u8>) {
-    let current_block_hash = block_view.current_block_hash();
-    let next_block_hash = next_block_hash(block_view.next_block_inner_hash, current_block_hash);
+    let current_block_hash = block_view.current_block_hash::<D>();
+    let next_block_hash =
+        next_block_hash::<D>(block_view.next_block_inner_hash, current_block_hash);
     let approval_message = [
         ApprovalInner::Endorsement(next_block_hash)
             .try_to_vec()

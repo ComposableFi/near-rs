@@ -30,9 +30,12 @@ impl<S: StateStorage, V: BlockValidation> LightClient<S, V> {
         let head = LightClientBlockView::from(checkpoint);
         Self {
             relevant_epochs,
-            block_producers_per_epoch: [(head.inner_lite.next_epoch_id, head.approvals_after_next)]
-                .into_iter()
-                .collect::<HashMap<_, _>>(),
+            block_producers_per_epoch: [(
+                head.inner_lite.next_epoch_id,
+                head.approvals_after_next.clone(),
+            )]
+            .into_iter()
+            .collect::<HashMap<_, _>>(),
             _s: PhantomData::default(),
             _v: PhantomData::default(),
             head,
@@ -59,7 +62,7 @@ mod tests {
         fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
             let head = LightClientBlockView::from(checkpoint);
             Self {
-                storage: DummyStateStorage::new(head),
+                storage: DummyStateStorage::new(head.clone()),
                 block_producers_per_epoch: [(
                     head.inner_lite.next_epoch_id,
                     head.approvals_after_next,
@@ -102,16 +105,9 @@ mod tests {
     #[test]
     fn test_mock_light_with_checkpoint() {
         let mut mock_light_client =
-            MockLightClient::<Sha256Digest>::with_checkpoint(TrustedCheckpoint::new());
+            MockLightClient::<Sha256Digest>::with_checkpoint(TrustedCheckpoint::new_for_test());
 
-        let block_view = LightClientBlockView {
-            prev_block_hash: todo!(),
-            next_block_inner_hash: todo!(),
-            inner_lite: todo!(),
-            inner_rest_hash: todo!(),
-            next_bps: todo!(),
-            approvals_after_next: todo!(),
-        };
+        let block_view = LightClientBlockView::new_for_test();
         assert!(mock_light_client.validate_and_update_head(&block_view));
     }
 }

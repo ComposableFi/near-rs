@@ -11,15 +11,9 @@ pub struct TrustedCheckpoint(LightClientBlockView);
 
 #[cfg(test)]
 impl TrustedCheckpoint {
-    pub fn new() -> TrustedCheckpoint {
-        Self(LightClientBlockView {
-            prev_block_hash: todo!(),
-            next_block_inner_hash: todo!(),
-            inner_lite: todo!(),
-            inner_rest_hash: todo!(),
-            next_bps: todo!(),
-            approvals_after_next: todo!(),
-        })
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        Self(LightClientBlockView::new_for_test())
     }
 }
 
