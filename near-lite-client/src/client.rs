@@ -1,9 +1,8 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::collections::HashMap;
 
 use crate::{
-    block_validation::BlockValidation,
     checkpoint::TrustedCheckpoint,
-    storage::StateStorage,
+    storage::{DummyStateStorage, StateStorage},
     types::{CryptoHash, LightClientBlockView, Signature},
 };
 
@@ -11,7 +10,7 @@ use crate::{
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
 #[allow(dead_code)]
-pub struct LightClient<S: StateStorage, V: BlockValidation> {
+pub struct LightClient {
     // current block view tracked by the client which has been validated
     head: LightClientBlockView,
 
@@ -21,23 +20,21 @@ pub struct LightClient<S: StateStorage, V: BlockValidation> {
     /// set of validators that can sign a mined block
     block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
 
-    _s: PhantomData<S>, // TODO remote this one
-    _v: PhantomData<V>,
+    state_storage: DummyStateStorage,
 }
 
-impl<S: StateStorage, V: BlockValidation> LightClient<S, V> {
+impl LightClient {
     pub fn with_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
         let head = LightClientBlockView::from(checkpoint);
         Self {
+            state_storage: DummyStateStorage::new(head.clone()),
             relevant_epochs,
             block_producers_per_epoch: [(
                 head.inner_lite.next_epoch_id,
                 head.approvals_after_next.clone(),
             )]
             .into_iter()
-            .collect::<HashMap<_, _>>(),
-            _s: PhantomData::default(),
-            _v: PhantomData::default(),
+            .collect(),
             head,
         }
     }
@@ -51,14 +48,14 @@ mod tests {
         verifier::StateTransitionVerificator,
     };
 
-    struct MockLightClient<V: BlockValidation> {
+    struct MockLightClient {
         /// set of validators that can sign a mined block
+        #[allow(dead_code)]
         block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
         storage: DummyStateStorage,
-        _v: PhantomData<V>,
     }
 
-    impl<V: BlockValidation> MockLightClient<V> {
+    impl MockLightClient {
         fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
             let head = LightClientBlockView::from(checkpoint);
             Self {
@@ -69,13 +66,12 @@ mod tests {
                 )]
                 .into_iter()
                 .collect::<HashMap<_, _>>(),
-                _v: PhantomData::default(),
             }
         }
     }
 
     // dummy implementation (at least for now)
-    impl<V: BlockValidation> StateStorage for MockLightClient<V> {
+    impl StateStorage for MockLightClient {
         fn get_head(&mut self) -> &mut LightClientBlockView {
             self.storage.get_head()
         }
@@ -93,8 +89,7 @@ mod tests {
         }
     }
 
-    impl<V: BlockValidation> StateTransitionVerificator for MockLightClient<V> {
-        type V = V;
+    impl StateTransitionVerificator for MockLightClient {
         type D = Sha256Digest;
 
         fn validate_and_update_head(&mut self, _block_view: &LightClientBlockView) -> bool {
@@ -105,7 +100,7 @@ mod tests {
     #[test]
     fn test_mock_light_with_checkpoint() {
         let mut mock_light_client =
-            MockLightClient::<Sha256Digest>::with_checkpoint(TrustedCheckpoint::new_for_test());
+            MockLightClient::with_checkpoint(TrustedCheckpoint::new_for_test());
 
         let block_view = LightClientBlockView::new_for_test();
         assert!(mock_light_client.validate_and_update_head(&block_view));

@@ -6,7 +6,6 @@ use crate::{
 
 use borsh::BorshSerialize;
 pub trait StateTransitionVerificator: StateStorage {
-    type V: BlockValidation;
     type D: Digest;
 
     fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {

@@ -5,6 +5,8 @@ use crate::{
     types::{ApprovalInner, CryptoHash, LightClientBlockView, PublicKey, ValidatorStakeView},
 };
 
+use sp_io::hashing::sha2_256;
+
 use borsh::BorshSerialize;
 
 #[cfg(test)]
@@ -136,6 +138,13 @@ pub(crate) fn next_block_hash<D: Digest>(
 }
 pub trait Digest {
     fn digest(data: impl AsRef<[u8]>) -> Vec<u8>;
+}
+
+pub struct SubstrateDigest;
+impl Digest for SubstrateDigest {
+    fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
+        sha2_256(data.as_ref()).to_vec()
+    }
 }
 
 #[cfg(test)]

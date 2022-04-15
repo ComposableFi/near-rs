@@ -2,11 +2,6 @@ use crate::block_validation::Digest;
 use borsh::{BorshDeserialize, BorshSerialize};
 use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
-#[derive(Debug, Clone)]
-pub enum SignatureType {
-    Ed25519,
-}
-
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct PublicKey(pub [u8; 32]);
 pub type Signature = Ed25519Signature;
@@ -37,7 +32,6 @@ impl From<&PublicKey> for Ed25519Public {
         Ed25519Public(pubkey.0.clone())
     }
 }
-pub struct EpochId(pub CryptoHash);
 pub type BlockHeight = u64;
 pub type AccountId = String;
 pub type Balance = u64;

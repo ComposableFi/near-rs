@@ -9,18 +9,18 @@ pub trait StateStorage {
         &mut self,
     ) -> &mut HashMap<CryptoHash, Vec<ValidatorStakeView>>;
 }
-#[cfg(test)]
+// #[cfg(test)] // TODO put back when there is another impl of StateStorage
 pub struct DummyStateStorage {
     head: LightClientBlockView,
 }
 
-#[cfg(test)]
+// #[cfg(test)]
 impl DummyStateStorage {
     pub fn new(head: LightClientBlockView) -> Self {
         Self { head: head }
     }
 }
-#[cfg(test)]
+// #[cfg(test)]
 impl StateStorage for DummyStateStorage {
     fn get_head(&mut self) -> &mut LightClientBlockView {
         &mut self.head
