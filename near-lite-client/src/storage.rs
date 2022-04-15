@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::types::{CryptoHash, LightClientBlockView, ValidatorStakeView};
 
 pub trait StateStorage {
-    fn get_head(&mut self) -> &mut LightClientBlockView;
+    fn get_head(&self) -> &LightClientBlockView;
+    fn get_head_mut(&mut self) -> &mut LightClientBlockView;
     fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>>;
     fn get_epoch_block_producers_mut(
         &mut self,
@@ -22,7 +23,11 @@ impl DummyStateStorage {
 }
 // #[cfg(test)]
 impl StateStorage for DummyStateStorage {
-    fn get_head(&mut self) -> &mut LightClientBlockView {
+    fn get_head(&self) -> &LightClientBlockView {
+        &self.head
+    }
+
+    fn get_head_mut(&mut self) -> &mut LightClientBlockView {
         &mut self.head
     }
 
