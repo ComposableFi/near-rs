@@ -1,5 +1,5 @@
 use crate::{
-    block_validation::{BlockValidation, Digest},
+    block_validation::{validate_light_block, Digest},
     storage::StateStorage,
     types::{ApprovalInner, CryptoHash, LightClientBlockView},
 };
@@ -9,12 +9,15 @@ pub trait StateTransitionVerificator: StateStorage {
     type D: Digest;
 
     fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {
+        let head = self.get_head();
+        let epoch_block_producers = self.get_epoch_block_producers();
+        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers) {}
         self.get_epoch_block_producers_mut().insert(
             block_view.inner_lite.next_epoch_id,
             block_view.next_bps.as_ref().unwrap().clone(),
         );
 
-        let head = self.get_head();
+        let head = self.get_head_mut();
         *head = block_view.clone();
         true
     }
