@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     checkpoint::TrustedCheckpoint,
-    storage::{DummyStateStorage, StateStorage},
+    storage::DummyStateStorage,
     types::{CryptoHash, LightClientBlockView, Signature},
 };
 
@@ -44,7 +44,8 @@ impl LightClient {
 mod tests {
     use super::*;
     use crate::{
-        block_validation::Sha256Digest, storage::DummyStateStorage,
+        block_validation::Sha256Digest,
+        storage::{DummyStateStorage, StateStorage},
         verifier::StateTransitionVerificator,
     };
 
@@ -72,8 +73,12 @@ mod tests {
 
     // dummy implementation (at least for now)
     impl StateStorage for MockLightClient {
-        fn get_head(&mut self) -> &mut LightClientBlockView {
+        fn get_head(&self) -> &LightClientBlockView {
             self.storage.get_head()
+        }
+
+        fn get_head_mut(&mut self) -> &mut LightClientBlockView {
+            self.storage.get_head_mut()
         }
 
         fn get_epoch_block_producers(
