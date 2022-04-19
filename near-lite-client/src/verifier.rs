@@ -117,7 +117,7 @@ fn calculate_merklelization_hashes<D: Digest>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::block_validation::SubstrateDigest;
+    use crate::{block_validation::SubstrateDigest, types::MerklePathItem};
 
     #[test]
     fn test_calculate_execution_outcome_hash() {
@@ -156,6 +156,51 @@ mod test {
         assert_eq!(
             CryptoHash::try_from(expected_execution_outcome_hash.as_ref()).unwrap(),
             calculate_execution_outcome_hash::<SubstrateDigest>(&execution_outcome, tx_hash)
+        );
+    }
+
+    #[test]
+    fn test_compute_from_path() {
+        let path = vec![
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("3hbd1r5BK33WsN6Qit7qJCjFeVZfDFBZL3TnJt2S2T4T")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("4A9zZ1umpi36rXiuaKYJZgAjhUH9WoTrnSBXtA3wMdV2")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+        ];
+        let item_hash = CryptoHash::try_from(
+            bs58::decode("2gvBz5DDhPVuy7fSPAu8Xei8oc92W2JtVf4SQRjupoQF")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+        let expected_block_outcome_root = CryptoHash::try_from(
+            bs58::decode("AZYywqmo6vXvhPdVyuotmoEDgNb2tQzh2A1kV5f4Mxmq")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            expected_block_outcome_root,
+            compute_root_from_path::<SubstrateDigest>(&path, item_hash)
         );
     }
 }
