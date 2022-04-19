@@ -2,10 +2,7 @@ use crate::{
     block_validation::{validate_light_block, Digest},
     merkle_tree::compute_root_from_path,
     storage::StateStorage,
-    types::{
-        ApprovalInner, CryptoHash, ExecutionOutcomeView, LightClientBlockView, MerklePath,
-        OutcomeProof,
-    },
+    types::{CryptoHash, ExecutionOutcomeView, LightClientBlockView, MerklePath, OutcomeProof},
 };
 
 use borsh::BorshSerialize;
