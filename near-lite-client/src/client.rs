@@ -4,7 +4,7 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, Signature},
+    types::{CryptoHash, LightClientBlockView, LiteClientResult, Signature},
     verifier::StateTransitionVerificator,
 };
 
@@ -67,8 +67,11 @@ impl StateStorage for LightClient {
 impl StateTransitionVerificator for LightClient {
     type D = SubstrateDigest;
 
-    fn validate_and_update_head(&mut self, _block_view: &LightClientBlockView) -> bool {
-        true
+    fn validate_and_update_head(
+        &mut self,
+        _block_view: &LightClientBlockView,
+    ) -> LiteClientResult<bool> {
+        Ok(true)
     }
 }
 
@@ -78,6 +81,7 @@ mod tests {
     use crate::{
         block_validation::Sha256Digest,
         storage::{DummyStateStorage, StateStorage},
+        types::LiteClientResult,
         verifier::StateTransitionVerificator,
     };
 
@@ -129,8 +133,11 @@ mod tests {
     impl StateTransitionVerificator for MockLightClient {
         type D = Sha256Digest;
 
-        fn validate_and_update_head(&mut self, _block_view: &LightClientBlockView) -> bool {
-            true
+        fn validate_and_update_head(
+            &mut self,
+            _block_view: &LightClientBlockView,
+        ) -> LiteClientResult<bool> {
+            Ok(true)
         }
     }
 
@@ -140,6 +147,8 @@ mod tests {
             MockLightClient::with_checkpoint(TrustedCheckpoint::new_for_test());
 
         let block_view = LightClientBlockView::new_for_test();
-        assert!(mock_light_client.validate_and_update_head(&block_view));
+        assert!(mock_light_client
+            .validate_and_update_head(&block_view)
+            .unwrap());
     }
 }

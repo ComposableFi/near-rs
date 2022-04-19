@@ -2,17 +2,23 @@ use crate::{
     block_validation::{validate_light_block, Digest},
     merkle_tree::compute_root_from_path,
     storage::StateStorage,
-    types::{CryptoHash, ExecutionOutcomeView, LightClientBlockView, MerklePath, OutcomeProof},
+    types::{
+        CryptoHash, ExecutionOutcomeView, LightClientBlockView, LiteClientResult, MerklePath,
+        OutcomeProof,
+    },
 };
 
 use borsh::BorshSerialize;
 pub trait StateTransitionVerificator: StateStorage {
     type D: Digest;
 
-    fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {
+    fn validate_and_update_head(
+        &mut self,
+        block_view: &LightClientBlockView,
+    ) -> LiteClientResult<bool> {
         let head = self.get_head();
         let epoch_block_producers = self.get_epoch_block_producers();
-        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers) {}
+        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {}
         self.get_epoch_block_producers_mut().insert(
             block_view.inner_lite.next_epoch_id,
             block_view.next_bps.as_ref().unwrap().clone(),
@@ -20,7 +26,7 @@ pub trait StateTransitionVerificator: StateStorage {
 
         let head = self.get_head_mut();
         *head = block_view.clone();
-        true
+        Ok(true)
     }
 
     fn validate_transaction(
@@ -28,11 +34,11 @@ pub trait StateTransitionVerificator: StateStorage {
         outcome_proof: &OutcomeProof,
         outcome_root_proof: MerklePath,
         expected_block_outcome_root: CryptoHash,
-    ) -> bool {
+    ) -> LiteClientResult<bool> {
         let execution_outcome_hash =
             calculate_execution_outcome_hash::<Self::D>(&outcome_proof.outcome, outcome_proof.id);
         let shard_outcome_root =
-            compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash);
+            compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
 
         let block_outcome_root = compute_root_from_path::<Self::D>(
             &outcome_root_proof,
@@ -40,9 +46,9 @@ pub trait StateTransitionVerificator: StateStorage {
                 .as_slice()
                 .try_into()
                 .unwrap(),
-        );
+        )?;
 
-        expected_block_outcome_root == block_outcome_root
+        Ok(expected_block_outcome_root == block_outcome_root)
     }
 }
 
@@ -197,7 +203,7 @@ mod test {
 
         assert_eq!(
             expected_block_outcome_root,
-            compute_root_from_path::<SubstrateDigest>(&path, item_hash)
+            compute_root_from_path::<SubstrateDigest>(&path, item_hash).unwrap()
         );
     }
 
@@ -325,10 +331,12 @@ mod test {
         )
         .unwrap();
         let dummy_lite_client = VeryDummyLiteClient {};
-        assert!(dummy_lite_client.validate_transaction(
-            &outcome_proof,
-            outcome_root_proof,
-            expected_block_outcome_root,
-        ));
+        assert!(dummy_lite_client
+            .validate_transaction(
+                &outcome_proof,
+                outcome_root_proof,
+                expected_block_outcome_root,
+            )
+            .unwrap());
     }
 }

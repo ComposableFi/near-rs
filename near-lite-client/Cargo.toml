@@ -12,6 +12,7 @@ homepage = "https://composable.finance"
 borsh = {version = "0.9.3", default-features = false }
 sp-io = "6.0.0"
 sp-core = "6.0.0"
+thiserror = "1.0.30"
 
 [dev-dependencies]
 sha2 = "0.10.2"

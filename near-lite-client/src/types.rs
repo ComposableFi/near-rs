@@ -1,7 +1,13 @@
-use crate::block_validation::Digest;
+use core::fmt;
+use std::fmt::Display;
+
+use crate::{block_validation::Digest, error::NearLiteClientError};
 use borsh::{BorshDeserialize, BorshSerialize};
 use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
+pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
+#[derive(Debug)]
+pub struct ConversionError(String);
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct PublicKey(pub [u8; 32]);
 pub type Signature = Ed25519Signature;
@@ -11,10 +17,10 @@ pub struct CryptoHash(pub [u8; 32]);
 
 // TODO: improve error message
 impl TryFrom<&[u8]> for CryptoHash {
-    type Error = String;
+    type Error = ConversionError;
     fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
         if v.len() != 32 {
-            return Err("wrong size".into());
+            return Err(ConversionError("wrong size".into()));
         }
         let inner: [u8; 32] = v.try_into().unwrap();
         Ok(CryptoHash(inner))
@@ -202,5 +208,11 @@ impl BlockHeaderInnerLiteView {
             next_bp_hash: CryptoHash([0; 32]),
             block_merkle_root: CryptoHash([0; 32]),
         }
+    }
+}
+
+impl Display for ConversionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{:?}", self)
     }
 }

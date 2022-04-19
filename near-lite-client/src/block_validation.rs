@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use crate::{
     signature::SignatureVerification,
-    types::{ApprovalInner, CryptoHash, LightClientBlockView, PublicKey, ValidatorStakeView},
+    types::{
+        ApprovalInner, CryptoHash, LightClientBlockView, LiteClientResult, PublicKey,
+        ValidatorStakeView,
+    },
 };
 
-use sp_io::hashing::sha2_256;
-
 use borsh::BorshSerialize;
+use sp_io::hashing::sha2_256;
 
 #[cfg(test)]
 use sha2::{Digest as DigestTrait, Sha256};
@@ -16,7 +18,7 @@ pub fn validate_light_block<D: Digest>(
     head: &LightClientBlockView,
     block_view: &LightClientBlockView,
     epoch_block_producers_map: &HashMap<CryptoHash, Vec<ValidatorStakeView>>,
-) -> bool {
+) -> LiteClientResult<bool> {
     //The light client updates its head with the information from LightClientBlockView iff:
 
     // 1. The height of the block is higher than the height of the current head;
@@ -30,25 +32,25 @@ pub fn validate_light_block<D: Digest>(
     // QUESTION: do we also want to pass the block hash received from the RPC?
     // it's not on the spec, but it's an extra validation
     let (_current_block_hash, _next_block_hash, approval_message) =
-        reconstruct_light_client_block_view_fields::<D>(block_view);
+        reconstruct_light_client_block_view_fields::<D>(block_view)?;
 
     // (1)
     if block_view.inner_lite.height <= head.inner_lite.height {
-        return false;
+        return Ok(false);
     }
 
     // (2)
     if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
         .contains(&block_view.inner_lite.epoch_id)
     {
-        return false;
+        return Ok(false);
     }
 
     // (3)
     if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id
         && block_view.next_bps.is_none()
     {
-        return false;
+        return Ok(false);
     }
 
     //  (4) and (5)
@@ -77,49 +79,39 @@ pub fn validate_light_block<D: Digest>(
             .unwrap()
             .verify(&approval_message, validator_public_key)
         {
-            return false;
+            return Ok(false);
         }
     }
 
     let threshold = total_stake * 2 / 3;
     if approved_stake <= threshold {
-        return false;
+        return Ok(false);
     }
 
     // # (6)
-    let block_view_next_bps_serialized = block_view
-        .next_bps
-        .as_deref()
-        .unwrap()
-        .try_to_vec()
-        .unwrap();
+    let block_view_next_bps_serialized = block_view.next_bps.as_deref().unwrap().try_to_vec()?;
     if block_view.next_bps.is_some() {
         if D::digest(block_view_next_bps_serialized).as_slice()
             != block_view.inner_lite.next_bp_hash.as_ref()
         {
-            return false;
+            return Ok(false);
         }
     }
-    true
+    Ok(true)
 }
 
 pub fn reconstruct_light_client_block_view_fields<D: Digest>(
     block_view: &LightClientBlockView,
-) -> (CryptoHash, CryptoHash, Vec<u8>) {
+) -> LiteClientResult<(CryptoHash, CryptoHash, Vec<u8>)> {
     let current_block_hash = block_view.current_block_hash::<D>();
     let next_block_hash =
         next_block_hash::<D>(block_view.next_block_inner_hash, current_block_hash);
     let approval_message = [
-        ApprovalInner::Endorsement(next_block_hash)
-            .try_to_vec()
-            .unwrap(),
-        (block_view.inner_lite.height + 2)
-            .to_le()
-            .try_to_vec()
-            .unwrap(),
+        ApprovalInner::Endorsement(next_block_hash).try_to_vec()?,
+        (block_view.inner_lite.height + 2).to_le().try_to_vec()?,
     ]
     .concat();
-    (current_block_hash, next_block_hash, approval_message)
+    Ok((current_block_hash, next_block_hash, approval_message))
 }
 
 pub(crate) fn next_block_hash<D: Digest>(
