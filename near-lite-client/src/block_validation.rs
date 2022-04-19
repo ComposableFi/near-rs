@@ -73,7 +73,7 @@ pub fn validate_light_block<D: Digest>(
 
         approved_stake += bp_stake;
 
-        let validator_public_key: PublicKey = block_producer.public_key.clone().try_into().unwrap();
+        let validator_public_key = block_producer.public_key.clone();
         if !maybe_signature
             .as_ref()
             .unwrap()
@@ -89,8 +89,9 @@ pub fn validate_light_block<D: Digest>(
     }
 
     // # (6)
-    let block_view_next_bps_serialized = block_view.next_bps.as_deref().unwrap().try_to_vec()?;
     if block_view.next_bps.is_some() {
+        let block_view_next_bps_serialized =
+            block_view.next_bps.as_deref().unwrap().try_to_vec()?;
         if D::digest(block_view_next_bps_serialized).as_slice()
             != block_view.inner_lite.next_bp_hash.as_ref()
         {
