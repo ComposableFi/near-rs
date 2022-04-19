@@ -7,7 +7,7 @@ pub struct PublicKey(pub [u8; 32]);
 pub type Signature = Ed25519Signature;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize)]
-pub struct CryptoHash([u8; 32]);
+pub struct CryptoHash(pub [u8; 32]);
 
 // TODO: improve error message
 impl TryFrom<&[u8]> for CryptoHash {

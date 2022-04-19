@@ -8,6 +8,7 @@
 mod block_validation;
 mod checkpoint;
 pub mod client;
+mod merkle_tree;
 mod signature;
 mod storage;
 mod types;

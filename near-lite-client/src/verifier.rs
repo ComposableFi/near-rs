@@ -1,5 +1,6 @@
 use crate::{
     block_validation::{validate_light_block, Digest},
+    merkle_tree::compute_root_from_path,
     storage::StateStorage,
     types::{
         ApprovalInner, CryptoHash, ExecutionOutcomeView, LightClientBlockView, MerklePath,
@@ -27,17 +28,16 @@ pub trait StateTransitionVerificator: StateStorage {
 
     fn validate_transaction<D: Digest>(
         &self,
-        outcome: &ExecutionOutcomeView,
         outcome_proof: &OutcomeProof,
         outcome_root_proof: MerklePath,
-        tx_hash: CryptoHash,
+        expected_block_outcome_root: CryptoHash,
     ) -> bool {
         let execution_outcome_hash =
-            calculate_execution_outcome_hash(&outcome_proof.outcome, outcome_proof.id);
+            calculate_execution_outcome_hash::<D>(&outcome_proof.outcome, outcome_proof.id);
         let shard_outcome_root =
-            compute_root_from_path(&outcome_proof.proof, execution_outcome_hash);
+            compute_root_from_path::<D>(&outcome_proof.proof, execution_outcome_hash);
 
-        let block_outcome_root = compute_root_from_path(
+        let block_outcome_root = compute_root_from_path::<D>(
             &outcome_root_proof,
             D::digest(shard_outcome_root.try_to_vec().unwrap())
                 .as_slice()
@@ -45,37 +45,8 @@ pub trait StateTransitionVerificator: StateStorage {
                 .unwrap(),
         );
 
-        let expected_block_outcome_root = todo!();
-
-        expected_block_outcome_root == block_outcome_root.as_ref()
+        expected_block_outcome_root == block_outcome_root
     }
-}
-
-fn reconstruct_light_client_block_view_fields<D: Digest>(
-    block_view: &LightClientBlockView,
-) -> (CryptoHash, CryptoHash, Vec<u8>) {
-    let current_block_hash = block_view.current_block_hash::<D>();
-    let next_block_hash =
-        next_block_hash::<D>(block_view.next_block_inner_hash, current_block_hash);
-    let approval_message = [
-        ApprovalInner::Endorsement(next_block_hash)
-            .try_to_vec()
-            .unwrap()
-            .as_ref(),
-        (block_view.inner_lite.height + 2).to_le_bytes().as_ref(), // TODO: double check this one
-    ]
-    .concat();
-    (current_block_hash, next_block_hash, approval_message)
-}
-
-pub(crate) fn next_block_hash<D: Digest>(
-    next_block_inner_hash: CryptoHash,
-    current_block_hash: CryptoHash,
-) -> CryptoHash {
-    D::digest([next_block_inner_hash.as_ref(), current_block_hash.as_ref()].concat())
-        .as_slice()
-        .try_into()
-        .unwrap()
 }
 
 // This function is needed in order to calculate the right execution outcome hash
@@ -129,7 +100,7 @@ fn calculate_merklelization_hashes<D: Digest>(
         execution_outcome.gas_burnt.try_to_vec().unwrap(),
         execution_outcome.tokens_burnt.try_to_vec().unwrap(),
         execution_outcome.executor_id.try_to_vec().unwrap(),
-        execution_outcome.status.try_to_vec().unwrap(),
+        execution_outcome.status.to_vec(), // This one comes already serialized (to make our lives simpler -- TODO: validate whether there's any risk associated with this)
     ]
     .concat();
 
@@ -141,4 +112,50 @@ fn calculate_merklelization_hashes<D: Digest>(
             acc.push(D::digest(log).as_slice().try_into().unwrap());
             acc
         })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::block_validation::SubstrateDigest;
+
+    #[test]
+    fn test_calculate_execution_outcome_hash() {
+        // status comes serialized directly for convenience
+        // otherwise we need to implement multiple of NEAR primitives enums
+        let serialized_status = vec![
+            3, 114, 128, 19, 177, 40, 127, 16, 184, 156, 69, 215, 55, 142, 98, 142, 27, 111, 246,
+            232, 85, 207, 169, 209, 101, 242, 113, 144, 111, 227, 117, 100, 30,
+        ];
+        let decoded_hash = bs58::decode("8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK")
+            .into_vec()
+            .unwrap();
+
+        let receipt_id = CryptoHash::try_from(decoded_hash.as_ref()).unwrap();
+        let execution_outcome = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![receipt_id],
+            gas_burnt: 2428395018008,
+            tokens_burnt: 242839501800800000000,
+            executor_id: "relay.aurora".into(),
+            status: serialized_status,
+        };
+
+        let tx_hash = CryptoHash::try_from(
+            bs58::decode("8HoqDvJGYrSjaejXpv2PsK8c5NUvqhU3EcUFkgq18jx9")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+
+        let expected_execution_outcome_hash =
+            bs58::decode("8QtUAFNktUqLp9fg9ohp5PAHjemxMcG6ryW2z5DcUK6C")
+                .into_vec()
+                .unwrap();
+        assert_eq!(
+            CryptoHash::try_from(expected_execution_outcome_hash.as_ref()).unwrap(),
+            calculate_execution_outcome_hash::<SubstrateDigest>(&execution_outcome, tx_hash)
+        );
+    }
 }
