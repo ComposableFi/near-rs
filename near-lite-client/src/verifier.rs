@@ -232,10 +232,11 @@ mod test {
             {
                 todo!()
             }
-        };
+        }
+
         impl StateTransitionVerificator for VeryDummyLiteClient {
             type D = SubstrateDigest;
-        };
+        }
 
         let tx_hash = CryptoHash::try_from(
             bs58::decode("8HoqDvJGYrSjaejXpv2PsK8c5NUvqhU3EcUFkgq18jx9")
