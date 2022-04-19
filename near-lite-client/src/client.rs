@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use crate::{
+    block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
-    storage::DummyStateStorage,
+    storage::{DummyStateStorage, StateStorage},
     types::{CryptoHash, LightClientBlockView, Signature},
+    verifier::StateTransitionVerificator,
 };
 
 /// LightClient keeps track of at least one block per epoch, the set of validators
@@ -37,6 +39,36 @@ impl LightClient {
             .collect(),
             head,
         }
+    }
+}
+
+impl StateStorage for LightClient {
+    fn get_head(&self) -> &LightClientBlockView {
+        self.state_storage.get_head()
+    }
+
+    fn get_head_mut(&mut self) -> &mut LightClientBlockView {
+        self.state_storage.get_head_mut()
+    }
+
+    fn get_epoch_block_producers(
+        &self,
+    ) -> &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+        todo!()
+    }
+
+    fn get_epoch_block_producers_mut(
+        &mut self,
+    ) -> &mut HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+        todo!()
+    }
+}
+
+impl StateTransitionVerificator for LightClient {
+    type D = SubstrateDigest;
+
+    fn validate_and_update_head(&mut self, _block_view: &LightClientBlockView) -> bool {
+        true
     }
 }
 
