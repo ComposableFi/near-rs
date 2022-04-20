@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use crate::{
     signature::SignatureVerification,
     types::{
-        ApprovalInner, CryptoHash, LightClientBlockView, LiteClientResult, PublicKey,
-        ValidatorStakeView,
+        ApprovalInner, CryptoHash, LightClientBlockView, LiteClientResult, ValidatorStakeView,
     },
 };
 
@@ -64,7 +63,8 @@ pub fn validate_light_block<D: Digest>(
         .iter()
         .zip(epoch_block_producers.iter())
     {
-        let bp_stake = block_producer.stake;
+        let bp_stake_view = block_producer.clone().into_validator_stake();
+        let bp_stake = bp_stake_view.stake;
         total_stake += bp_stake;
 
         if maybe_signature.is_none() {
@@ -73,7 +73,7 @@ pub fn validate_light_block<D: Digest>(
 
         approved_stake += bp_stake;
 
-        let validator_public_key = block_producer.public_key.clone();
+        let validator_public_key = bp_stake_view.public_key.clone();
         if !maybe_signature
             .as_ref()
             .unwrap()
@@ -122,7 +122,7 @@ pub(crate) fn next_block_hash<D: Digest>(
     D::digest([next_block_inner_hash.as_ref(), current_block_hash.as_ref()].concat())
         .as_slice()
         .try_into()
-        .unwrap()
+        .expect("Could not hash the next block")
 }
 pub trait Digest {
     fn digest(data: impl AsRef<[u8]>) -> Vec<u8>;

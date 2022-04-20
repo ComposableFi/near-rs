@@ -8,7 +8,7 @@ pub trait SignatureVerification {
 
 impl SignatureVerification for Signature {
     fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
-        ed25519_verify(self, data.as_ref(), &Ed25519Public::from(&public_key))
+        ed25519_verify(&self.0, data.as_ref(), &Ed25519Public::from(&public_key))
     }
 }
 

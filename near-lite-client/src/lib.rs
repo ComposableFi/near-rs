@@ -6,11 +6,11 @@
 //! 2. verify that a transaction belongs to a vald block
 
 mod block_validation;
-mod checkpoint;
+pub mod checkpoint;
 pub mod client;
 mod error;
 mod merkle_tree;
 mod signature;
 mod storage;
-mod types;
+pub mod types;
 mod verifier;

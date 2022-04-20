@@ -11,7 +11,7 @@ pub trait StateStorage {
 // #[cfg(test)] // TODO put back when there is another impl of StateStorage
 pub struct DummyStateStorage {
     head: LightClientBlockView,
-    /// set of validators that can sign a mined block
+    #[allow(dead_code)]
     block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
 }
 
