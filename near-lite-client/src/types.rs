@@ -34,7 +34,6 @@ impl PublicKey {
     }
 }
 
-// TODO: improve error message
 impl TryFrom<&[u8]> for CryptoHash {
     type Error = ConversionError;
     fn try_from(v: &[u8]) -> Result<Self, Self::Error> {

@@ -26,7 +26,6 @@ pub fn combine_hash<D: Digest>(
     hash1: &MerkleHash,
     hash2: &MerkleHash,
 ) -> LiteClientResult<MerkleHash> {
-    // TODO: error management
     Ok(MerkleHash::try_from(
         D::digest(&(hash1, hash2).try_to_vec()?).as_slice(),
     )?)
