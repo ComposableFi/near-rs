@@ -4,7 +4,7 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, LiteClientResult, Signature, ValidatorStakeView},
+    types::{CryptoHash, LightClientBlockView, LiteClientResult, ValidatorStakeView},
     verifier::StateTransitionVerificator,
 };
 
@@ -54,7 +54,7 @@ impl StateStorage for LightClient {
         todo!()
     }
 
-    fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
+    fn insert_epoch_block_producers(&mut self, _epoch: CryptoHash, _bps: Vec<ValidatorStakeView>) {
         todo!()
     }
 }

@@ -35,7 +35,7 @@ impl AsRef<[u8]> for CryptoHash {
 
 impl From<&PublicKey> for Ed25519Public {
     fn from(pubkey: &PublicKey) -> Ed25519Public {
-        Ed25519Public(pubkey.0.clone())
+        Ed25519Public(pubkey.0)
     }
 }
 pub type BlockHeight = u64;

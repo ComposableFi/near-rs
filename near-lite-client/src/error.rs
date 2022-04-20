@@ -6,20 +6,20 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum NearLiteClientError {
     #[error("Borsh error {0}")]
-    BorshError(BorshError),
+    Borsh(BorshError),
 
     #[error("IOError {0}")]
-    IOError(#[from] io::Error),
+    IO(#[from] io::Error),
 
     #[error("Conversion error {0}")]
-    ConversionError(ConversionError),
+    Conversion(ConversionError),
 }
 
 // Had to implement this variant manually due to some traits missing on the
 // Borsh side to be fully compatible w/ `thiserror`
 impl From<BorshError> for NearLiteClientError {
     fn from(err: BorshError) -> Self {
-        Self::BorshError(err)
+        Self::Borsh(err)
     }
 }
 
@@ -27,6 +27,6 @@ impl From<BorshError> for NearLiteClientError {
 // Borsh side to be fully compatible w/ `thiserror`
 impl From<ConversionError> for NearLiteClientError {
     fn from(err: ConversionError) -> Self {
-        Self::ConversionError(err)
+        Self::Conversion(err)
     }
 }

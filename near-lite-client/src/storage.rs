@@ -22,7 +22,7 @@ impl DummyStateStorage {
         epoch_block_producers: (CryptoHash, Vec<Option<Signature>>),
     ) -> Self {
         Self {
-            head: head,
+            head,
             block_producers_per_epoch: [epoch_block_producers].into_iter().collect(),
         }
     }
@@ -41,7 +41,7 @@ impl StateStorage for DummyStateStorage {
         todo!()
     }
 
-    fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
+    fn insert_epoch_block_producers(&mut self, _epoch: CryptoHash, _bps: Vec<ValidatorStakeView>) {
         todo!()
     }
 }
