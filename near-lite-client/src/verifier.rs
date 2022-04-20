@@ -18,8 +18,10 @@ pub trait StateTransitionVerificator: StateStorage {
     ) -> LiteClientResult<bool> {
         let head = self.get_head();
         let epoch_block_producers = self.get_epoch_block_producers();
-        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {}
-        self.get_epoch_block_producers_mut().insert(
+        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {
+            return Ok(false);
+        }
+        self.insert_epoch_block_producers(
             block_view.inner_lite.next_epoch_id,
             block_view.next_bps.as_ref().unwrap().clone(),
         );
@@ -120,7 +122,10 @@ fn calculate_merklelization_hashes<D: Digest>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{block_validation::SubstrateDigest, types::MerklePathItem};
+    use crate::{
+        block_validation::SubstrateDigest,
+        types::{MerklePathItem, ValidatorStakeView},
+    };
 
     #[test]
     fn test_calculate_execution_outcome_hash() {
@@ -226,10 +231,11 @@ mod test {
                 todo!()
             }
 
-            fn get_epoch_block_producers_mut(
+            fn insert_epoch_block_producers(
                 &mut self,
-            ) -> &mut std::collections::HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
-            {
+                epoch: CryptoHash,
+                bps: Vec<ValidatorStakeView>,
+            ) {
                 todo!()
             }
         }

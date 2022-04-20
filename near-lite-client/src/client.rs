@@ -4,7 +4,7 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, LiteClientResult, Signature},
+    types::{CryptoHash, LightClientBlockView, LiteClientResult, Signature, ValidatorStakeView},
     verifier::StateTransitionVerificator,
 };
 
@@ -19,9 +19,6 @@ pub struct LightClient {
     /// how many epochs the light client will track
     relevant_epochs: usize,
 
-    /// set of validators that can sign a mined block
-    block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
-
     state_storage: DummyStateStorage,
 }
 
@@ -29,14 +26,14 @@ impl LightClient {
     pub fn with_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
         let head = LightClientBlockView::from(checkpoint);
         Self {
-            state_storage: DummyStateStorage::new(head.clone()),
+            state_storage: DummyStateStorage::new(
+                head.clone(),
+                (
+                    head.inner_lite.next_epoch_id,
+                    head.approvals_after_next.clone(),
+                ),
+            ),
             relevant_epochs,
-            block_producers_per_epoch: [(
-                head.inner_lite.next_epoch_id,
-                head.approvals_after_next.clone(),
-            )]
-            .into_iter()
-            .collect(),
             head,
         }
     }
@@ -57,9 +54,7 @@ impl StateStorage for LightClient {
         todo!()
     }
 
-    fn get_epoch_block_producers_mut(
-        &mut self,
-    ) -> &mut HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+    fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
         todo!()
     }
 }
@@ -87,8 +82,6 @@ mod tests {
 
     struct MockLightClient {
         /// set of validators that can sign a mined block
-        #[allow(dead_code)]
-        block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
         storage: DummyStateStorage,
     }
 
@@ -96,13 +89,10 @@ mod tests {
         fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
             let head = LightClientBlockView::from(checkpoint);
             Self {
-                storage: DummyStateStorage::new(head.clone()),
-                block_producers_per_epoch: [(
-                    head.inner_lite.next_epoch_id,
-                    head.approvals_after_next,
-                )]
-                .into_iter()
-                .collect::<HashMap<_, _>>(),
+                storage: DummyStateStorage::new(
+                    head.clone(),
+                    (head.inner_lite.next_epoch_id, head.approvals_after_next),
+                ),
             }
         }
     }
@@ -123,9 +113,11 @@ mod tests {
             todo!()
         }
 
-        fn get_epoch_block_producers_mut(
+        fn insert_epoch_block_producers(
             &mut self,
-        ) -> &mut HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+            _epoch: CryptoHash,
+            _bps: Vec<ValidatorStakeView>,
+        ) {
             todo!()
         }
     }
