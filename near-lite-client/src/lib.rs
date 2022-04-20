@@ -4,13 +4,38 @@
 //! of the chain's state while still being able to:
 //! 1. verify the chain's state transitions and keep a subset of the state
 //! 2. verify that a transaction belongs to a vald block
+//!
+//! ## Usage
+//!
+//! ```ignore
+//! use near_lite_client::prelude::*;
+//! // call the Light Client constructuro with a `TrustedCheckpoint`
+//! let mut lite_client = LightClient::with_checkpoint(trusted_checkpoint);
+//!
+//! // there are two operations that can be performed:
+//! // `validate_and_update_head` & `validate_transaction`
+//!
+//! lite_client.validate_and_update_head(block_view);
+//! lite_client.validate_transaction(outcome_proof, outcome_root_proof, expected_block_outcome_root);
+//! ```
 
 mod block_validation;
-pub mod checkpoint;
-pub mod client;
+mod checkpoint;
+mod client;
 mod error;
 mod merkle_tree;
 mod signature;
 mod storage;
-pub mod types;
+mod types;
 mod verifier;
+
+pub use block_validation::{Digest, SubstrateDigest};
+pub use client::LightClient;
+pub use storage::StateStorage;
+pub use verifier::StateTransitionVerificator;
+
+pub mod prelude {
+    pub use super::{
+        Digest, LightClient, StateStorage, StateTransitionVerificator, SubstrateDigest,
+    };
+}
