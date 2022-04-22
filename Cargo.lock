@@ -944,9 +944,12 @@ dependencies = [
 name = "integration-tests"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "env_logger",
+ "log",
  "near-lite-client",
  "near-lite-relayer",
+ "near-primitives 0.12.0",
  "tokio",
 ]
 
@@ -1224,6 +1227,7 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "bs58",
+ "log",
  "near-crypto 0.12.0",
  "near-primitives 0.12.0",
  "serde",

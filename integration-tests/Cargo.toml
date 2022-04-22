@@ -9,5 +9,8 @@ edition = "2021"
 near-lite-client = {path = "../near-lite-client"}
 near-lite-relayer = {path = "../near-lite-relayer"}
 
+borsh = "0.9.3"
 env_logger = "0.9.0"
+log = "0.4.16"
 tokio = { version = "1.17.0", features = ["full"] }
+near-primitives = "0.12"

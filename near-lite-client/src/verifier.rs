@@ -128,6 +128,7 @@ mod test {
             ValidatorStakeViewV1,
         },
     };
+    use borsh::BorshDeserialize;
     use near_crypto::Signature as NearSignature;
     use near_primitives::{
         hash::CryptoHash as NearCryptoHash,
@@ -159,6 +160,7 @@ mod test {
                 prev_state_root: block.prev_state_root.into(),
                 outcome_root: block.outcome_root.into(),
                 timestamp: block.timestamp,
+                timestamp_nanosec: block.timestamp_nanosec,
                 next_bp_hash: block.next_bp_hash.into(),
                 block_merkle_root: block.block_merkle_root.into(),
             }
@@ -191,7 +193,7 @@ mod test {
         fn from(signature: NearSignature) -> Self {
             match signature {
                 NearSignature::ED25519(inner_signature) => {
-                    Self(Ed25519Signature::try_from(inner_signature.as_ref()).unwrap())
+                    Self::Ed25519(Ed25519Signature::try_from(inner_signature.as_ref()).unwrap())
                 }
                 _ => unimplemented!("Substrate runtime only supports ED25519"),
             }
@@ -209,11 +211,11 @@ mod test {
         }
     }
 
-    pub fn get_client_block_view(client_block_response: &str) -> io::Result<LightClientBlockView> {
+    pub fn get_client_block_view(
+        client_block_response: &str,
+    ) -> io::Result<NearLightClientBlockView> {
         Ok(
-            serde_json::from_str::<ResultFromRpc>(client_block_response)?
-                .result
-                .into(),
+            serde_json::from_str::<ResultFromRpc>(client_block_response)?.result, // .into(),
         )
     }
 
@@ -1996,12 +1998,32 @@ mod test {
         "id": "idontcare"
     }
     "#;
-        let client_block_view_checkpoint =
+        let near_client_block_view_checkpoint =
             get_client_block_view(client_response_previous_epoch).unwrap();
 
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
-        let client_block_view_next_epoch =
+        let client_block_view_checkpoint = LightClientBlockView::try_from_slice(
+            near_client_block_view_checkpoint
+                .try_to_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+
+        let near_client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = LightClientBlockView::try_from_slice(
+            near_client_block_view.try_to_vec().unwrap().as_ref(),
+        )
+        .unwrap();
+        let near_client_block_view_next_epoch =
             get_client_block_view(client_block_response_next_block).unwrap();
+
+        let client_block_view_next_epoch = LightClientBlockView::try_from_slice(
+            near_client_block_view_next_epoch
+                .try_to_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
 
         let mut light_client =
             LessDummyLiteClient::new_from_checkpoint(client_block_view_checkpoint);

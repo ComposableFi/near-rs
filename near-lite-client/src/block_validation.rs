@@ -77,7 +77,7 @@ pub fn validate_light_block<D: Digest>(
         if !maybe_signature
             .as_ref()
             .unwrap()
-            .verify(&approval_message, validator_public_key)
+            .verify(&approval_message, validator_public_key.clone())
         {
             return Ok(false);
         }

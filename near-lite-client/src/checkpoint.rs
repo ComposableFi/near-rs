@@ -7,7 +7,7 @@
 
 use crate::types::LightClientBlockView;
 
-pub struct TrustedCheckpoint(LightClientBlockView);
+pub struct TrustedCheckpoint(pub LightClientBlockView);
 
 #[cfg(test)]
 impl TrustedCheckpoint {

@@ -23,7 +23,7 @@ pub struct LightClient {
 }
 
 impl LightClient {
-    pub fn with_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
+    pub fn new_from_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
         let head = LightClientBlockView::from(checkpoint);
         Self {
             state_storage: DummyStateStorage::new(
@@ -86,7 +86,7 @@ mod tests {
     }
 
     impl MockLightClient {
-        fn with_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
+        fn new_from_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
             let head = LightClientBlockView::from(checkpoint);
             Self {
                 storage: DummyStateStorage::new(
@@ -134,9 +134,9 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_light_with_checkpoint() {
+    fn test_mock_light_new_from_checkpoint() {
         let mut mock_light_client =
-            MockLightClient::with_checkpoint(TrustedCheckpoint::new_for_test());
+            MockLightClient::new_from_checkpoint(TrustedCheckpoint::new_for_test());
 
         let block_view = LightClientBlockView::new_for_test();
         assert!(mock_light_client

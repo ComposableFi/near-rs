@@ -30,12 +30,15 @@ mod types;
 mod verifier;
 
 pub use block_validation::{Digest, SubstrateDigest};
+pub use checkpoint::TrustedCheckpoint;
 pub use client::LightClient;
 pub use storage::StateStorage;
+pub use types::{LightClientBlockView, Signature, ValidatorStakeView};
 pub use verifier::StateTransitionVerificator;
 
 pub mod prelude {
     pub use super::{
-        Digest, LightClient, StateStorage, StateTransitionVerificator, SubstrateDigest,
+        Digest, LightClient, LightClientBlockView, Signature, StateStorage,
+        StateTransitionVerificator, SubstrateDigest, TrustedCheckpoint, ValidatorStakeView,
     };
 }
