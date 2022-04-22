@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "integration-tests",
+    "near-lite-relayer",
+    "near-lite-client",
+]
