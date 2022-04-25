@@ -4,7 +4,7 @@ use crate::types::{CryptoHash, LightClientBlockView, Signature, ValidatorStakeVi
 
 pub trait StateStorage {
     fn get_head(&self) -> &LightClientBlockView;
-    fn get_head_mut(&mut self) -> &mut LightClientBlockView;
+    fn set_new_head(&mut self, new_head: LightClientBlockView);
     fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>>;
     fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>);
 }
@@ -33,8 +33,8 @@ impl StateStorage for DummyStateStorage {
         &self.head
     }
 
-    fn get_head_mut(&mut self) -> &mut LightClientBlockView {
-        &mut self.head
+    fn set_new_head(&mut self, new_head: LightClientBlockView) {
+        self.head = new_head;
     }
 
     fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>> {

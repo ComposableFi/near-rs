@@ -26,10 +26,13 @@ pub trait StateTransitionVerificator: StateStorage {
             block_view.next_bps.as_ref().unwrap().clone(),
         );
 
-        let head = self.get_head_mut();
-        *head = block_view.clone();
+        self.set_new_head(block_view.clone());
+
         #[cfg(test)]
-        log::info!("updated head to height = {}", head.inner_lite.height);
+        log::info!(
+            "updated head to height = {}",
+            self.get_head().inner_lite.height
+        );
 
         Ok(true)
     }
@@ -215,10 +218,10 @@ mod test {
     }
 
     pub fn get_client_block_view(
-        client_block_response: &str,
+        CLIENT_BLOCK_RESPONSE: &str,
     ) -> io::Result<NearLightClientBlockView> {
         Ok(
-            serde_json::from_str::<ResultFromRpc>(client_block_response)?.result, // .into(),
+            serde_json::from_str::<ResultFromRpc>(CLIENT_BLOCK_RESPONSE)?.result, // .into(),
         )
     }
 
@@ -315,7 +318,7 @@ mod test {
                 todo!()
             }
 
-            fn get_head_mut(&mut self) -> &mut LightClientBlockView {
+            fn set_new_head(&mut self, _new_head: LightClientBlockView) {
                 todo!()
             }
 
@@ -471,8 +474,8 @@ mod test {
                 &self.head
             }
 
-            fn get_head_mut(&mut self) -> &mut LightClientBlockView {
-                &mut self.head
+            fn set_new_head(&mut self, new_head: LightClientBlockView) {
+                self.head = new_head;
             }
 
             fn get_epoch_block_producers(
@@ -493,9 +496,8 @@ mod test {
         impl StateTransitionVerificator for LessDummyLiteClient {
             type D = SubstrateDigest;
         }
-        // let encoded_checkpoint = todo!();
 
-        const client_response_previous_epoch: &str = r#"
+        const CLIENT_RESPONSE_PREVIOUS_EPOCH: &str = r#"
         {
             "jsonrpc": "2.0",
             "result": {
@@ -1016,7 +1018,7 @@ mod test {
         }"#;
 
         // Block #86455884
-        const client_block_response: &str = r#"
+        const CLIENT_BLOCK_RESPONSE: &str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -1509,7 +1511,7 @@ mod test {
     }
     "#;
 
-        const client_block_response_next_block: &str = r#"
+        const CLIENT_BLOCK_RESPONSE_NEXT_BLOCK: &str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -2002,7 +2004,7 @@ mod test {
     }
     "#;
         let near_client_block_view_checkpoint =
-            get_client_block_view(client_response_previous_epoch).unwrap();
+            get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap();
 
         let client_block_view_checkpoint = LightClientBlockView::try_from_slice(
             near_client_block_view_checkpoint
@@ -2012,13 +2014,13 @@ mod test {
         )
         .unwrap();
 
-        let near_client_block_view = get_client_block_view(client_block_response).unwrap();
+        let near_client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let client_block_view = LightClientBlockView::try_from_slice(
             near_client_block_view.try_to_vec().unwrap().as_ref(),
         )
         .unwrap();
         let near_client_block_view_next_epoch =
-            get_client_block_view(client_block_response_next_block).unwrap();
+            get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
 
         let client_block_view_next_epoch = LightClientBlockView::try_from_slice(
             near_client_block_view_next_epoch

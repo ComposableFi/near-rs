@@ -354,9 +354,9 @@ mod tests {
     }
 
     fn get_client_near_block_view(
-        client_block_response: &str,
+        CLIENT_BLOCK_RESPONSE: &str,
     ) -> io::Result<NearLightClientBlockView> {
-        Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result)
+        Ok(serde_json::from_str::<ResultFromRpc>(CLIENT_BLOCK_RESPONSE)?.result)
     }
 
     #[test]

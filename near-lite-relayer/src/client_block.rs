@@ -23,7 +23,7 @@ mod tests {
     use super::*;
     use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
 
-    const client_block_response: &'static str = r#"
+    const CLIENT_BLOCK_RESPONSE: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -525,7 +525,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
 
         assert_eq!(
             client_block_view.prev_block_hash.as_ref(),

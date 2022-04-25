@@ -181,7 +181,7 @@ mod tests {
 
     use super::*;
 
-    const client_response_previous_epoch: &'static str = r#"
+    const CLIENT_RESPONSE_PREVIOUS_EPOCH: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -702,7 +702,7 @@ mod tests {
     }"#;
 
     // Block #86455884
-    const client_block_response: &'static str = r#"
+    const CLIENT_BLOCK_RESPONSE: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -1195,7 +1195,7 @@ mod tests {
     }
     "#;
 
-    const client_block_response_next_block: &'static str = r#"
+    const CLIENT_BLOCK_RESPONSE_NEXT_BLOCK: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -1690,9 +1690,9 @@ mod tests {
     #[test]
     fn test_validate_and_update_head_valid_block_next_epoch() {
         let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(client_response_previous_epoch).unwrap(),
+            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
         );
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let mut light_client_state =
             LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
@@ -1705,12 +1705,12 @@ mod tests {
         assert!(light_client_state.validate_and_update_head(&client_block_view));
     }
 
-    // #[test]
+    #[test]
     fn test_validate_and_update_head_valid_block_next_epoch_and_then_next_height() {
         let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(client_response_previous_epoch).unwrap(),
+            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
         );
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let mut light_client_state =
             LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
@@ -1722,7 +1722,7 @@ mod tests {
 
         assert!(light_client_state.validate_and_update_head(&client_block_view));
         let client_block_view_next_height =
-            get_client_block_view(client_block_response_next_block).unwrap();
+            get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
         assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
     }
 
@@ -1730,21 +1730,21 @@ mod tests {
     #[should_panic]
     fn test_validate_and_update_head_invalid_block() {
         let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(client_response_previous_epoch).unwrap(),
+            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
         );
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let mut light_client_state =
             LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
         let client_block_view_next_height =
-            get_client_block_view(client_block_response_next_block).unwrap();
+            get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
         assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
         assert!(light_client_state.validate_and_update_head(&client_block_view));
     }
 
     #[test]
     fn test_verify_signature() {
-        let client_block_view = get_client_block_view(client_block_response).unwrap();
+        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let next_block_hash = next_block_hash(
             client_block_view.next_block_inner_hash,
             client_block_view.current_block_hash(),

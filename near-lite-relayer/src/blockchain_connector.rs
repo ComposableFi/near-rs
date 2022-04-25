@@ -133,17 +133,17 @@ impl BlockchainConnector {
         &self,
     ) -> io::Result<(Base58CryptoHash, u64)> {
         #[derive(Debug, Deserialize)]
-        struct response {
-            pub result: result,
+        struct Response {
+            pub result: Result,
         }
 
         #[derive(Debug, Deserialize)]
-        struct result {
-            pub header: header,
+        struct Result {
+            pub header: Header,
         }
 
         #[derive(Debug, Deserialize)]
-        struct header {
+        struct Header {
             pub prev_hash: Base58CryptoHash,
             pub height: u64,
         }
@@ -158,7 +158,7 @@ impl BlockchainConnector {
                 "id": "dontcare",
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
-        let r = body.into_json::<response>()?;
+        let r = body.into_json::<Response>()?;
         Ok((r.result.header.prev_hash, r.result.header.height))
     }
 
@@ -167,17 +167,17 @@ impl BlockchainConnector {
     /// retrieve the block view for the next block
     pub fn get_block_hash_from_block_number(&self, height: u64) -> io::Result<Base58CryptoHash> {
         #[derive(Debug, Deserialize)]
-        struct response {
-            pub result: result,
+        struct Response {
+            pub result: Result,
         }
 
         #[derive(Debug, Deserialize)]
-        struct result {
-            pub header: header,
+        struct Result {
+            pub header: Header,
         }
 
         #[derive(Debug, Deserialize)]
-        struct header {
+        struct Header {
             pub prev_hash: Base58CryptoHash,
         }
 
@@ -191,7 +191,7 @@ impl BlockchainConnector {
                 "id": "dontcare",
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
-        Ok(body.into_json::<response>()?.result.header.prev_hash)
+        Ok(body.into_json::<Response>()?.result.header.prev_hash)
     }
 
     pub fn find_chunk_ids_with_burned_gas(
@@ -199,17 +199,17 @@ impl BlockchainConnector {
         block_height: u64,
     ) -> io::Result<Vec<Base58CryptoHash>> {
         #[derive(Debug, Deserialize)]
-        struct response {
-            pub result: result,
+        struct Response {
+            pub result: Result,
         }
 
         #[derive(Debug, Deserialize)]
-        struct result {
-            pub chunks: Vec<chunks>,
+        struct Result {
+            pub chunks: Vec<Chunks>,
         }
 
         #[derive(Debug, Deserialize)]
-        struct chunks {
+        struct Chunks {
             #[serde(deserialize_with = "deserialize_number_from_string")]
             pub balance_burnt: u128,
             pub chunk_hash: Base58CryptoHash,
@@ -226,7 +226,7 @@ impl BlockchainConnector {
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
         Ok(body
-            .into_json::<response>()?
+            .into_json::<Response>()?
             .result
             .chunks
             .into_iter()
@@ -245,17 +245,17 @@ impl BlockchainConnector {
         chunk_id: Base58CryptoHash,
     ) -> io::Result<Vec<(Base58CryptoHash, String)>> {
         #[derive(Debug, Deserialize)]
-        struct response {
-            pub result: result,
+        struct Response {
+            pub result: Result,
         }
 
         #[derive(Debug, Deserialize)]
-        struct result {
-            pub transactions: Vec<tx>,
+        struct Result {
+            pub transactions: Vec<Tx>,
         }
 
         #[derive(Debug, Deserialize)]
-        struct tx {
+        struct Tx {
             pub hash: Base58CryptoHash,
             pub signer_id: String,
         }
@@ -271,7 +271,7 @@ impl BlockchainConnector {
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
         Ok(body
-            .into_json::<response>()?
+            .into_json::<Response>()?
             .result
             .transactions
             .into_iter()
@@ -286,7 +286,7 @@ impl BlockchainConnector {
         sender_id: String,
     ) -> io::Result<RpcLightClientExecutionProofResponseForLiteClient> {
         #[derive(Debug, Deserialize)]
-        struct response {
+        struct Response {
             pub result: RpcLightClientExecutionProofResponse,
         }
 
@@ -300,7 +300,7 @@ impl BlockchainConnector {
                 "id": "dontcare",
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
-        Ok(body.into_json::<response>()?.result.into())
+        Ok(body.into_json::<Response>()?.result.into())
     }
 }
 

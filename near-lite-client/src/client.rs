@@ -4,7 +4,7 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, LiteClientResult, ValidatorStakeView},
+    types::{CryptoHash, LightClientBlockView, ValidatorStakeView},
     verifier::StateTransitionVerificator,
 };
 
@@ -44,8 +44,8 @@ impl StateStorage for LightClient {
         self.state_storage.get_head()
     }
 
-    fn get_head_mut(&mut self) -> &mut LightClientBlockView {
-        self.state_storage.get_head_mut()
+    fn set_new_head(&mut self, new_head: LightClientBlockView) {
+        self.state_storage.set_new_head(new_head)
     }
 
     fn get_epoch_block_producers(
@@ -99,8 +99,8 @@ mod tests {
             self.storage.get_head()
         }
 
-        fn get_head_mut(&mut self) -> &mut LightClientBlockView {
-            self.storage.get_head_mut()
+        fn set_new_head(&mut self, new_head: LightClientBlockView) {
+            self.storage.set_new_head(new_head)
         }
 
         fn get_epoch_block_producers(

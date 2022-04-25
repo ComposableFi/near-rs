@@ -171,7 +171,6 @@ pub(crate) fn next_block_hash(
 #[derive(Debug, Clone, BorshSerialize)]
 pub enum ApprovalInner {
     Endorsement(CryptoHash),
-    Skip(BlockHeight),
 }
 
 pub fn reconstruct_light_client_block_view_fields(
@@ -369,7 +368,7 @@ mod tests {
     use near_primitives::merkle::compute_root_from_path;
     use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
 
-    const client_proof_response: &'static str = r#"
+    const CLIENT_PROOF_RESPONSE: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -501,7 +500,7 @@ mod tests {
 
     #[test]
     fn parse_light_client_proof_response() {
-        let parsed_response = get_block_header_lite(client_proof_response).unwrap();
+        let parsed_response = get_block_header_lite(CLIENT_PROOF_RESPONSE).unwrap();
         assert_eq!(
             parsed_response
                 .get_block_header_inner_lite_view()
@@ -546,7 +545,7 @@ mod tests {
 
     #[test]
     fn calculate_hash_light_client_block_lite_view() {
-        let block_header_lite = get_block_header_lite(client_proof_response).unwrap();
+        let block_header_lite = get_block_header_lite(CLIENT_PROOF_RESPONSE).unwrap();
         let current_block_hash = block_header_lite
             .get_light_client_block_view()
             .current_block_hash();
@@ -559,7 +558,7 @@ mod tests {
 
     #[test]
     fn test_validate_transaction() {
-        let parsed_response = get_block_header_lite(client_proof_response).unwrap();
+        let parsed_response = get_block_header_lite(CLIENT_PROOF_RESPONSE).unwrap();
         assert_eq!(
             parsed_response
                 .get_block_header_inner_lite_view()
