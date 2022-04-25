@@ -146,7 +146,7 @@ mod test {
     };
     use sp_core::ed25519::Signature as Ed25519Signature;
 
-    use std::{collections::HashMap, io};
+    use std::{collections::BTreeMap, io};
     #[derive(Debug, serde::Deserialize)]
     struct ResultFromRpc {
         pub result: NearLightClientBlockView,
@@ -218,10 +218,10 @@ mod test {
     }
 
     pub fn get_client_block_view(
-        CLIENT_BLOCK_RESPONSE: &str,
+        client_block_response: &str,
     ) -> io::Result<NearLightClientBlockView> {
         Ok(
-            serde_json::from_str::<ResultFromRpc>(CLIENT_BLOCK_RESPONSE)?.result, // .into(),
+            serde_json::from_str::<ResultFromRpc>(client_block_response)?.result, // .into(),
         )
     }
 
@@ -324,7 +324,7 @@ mod test {
 
             fn get_epoch_block_producers(
                 &self,
-            ) -> &std::collections::HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
+            ) -> &std::collections::BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
             {
                 todo!()
             }
@@ -450,7 +450,7 @@ mod test {
         struct LessDummyLiteClient {
             head: LightClientBlockView,
             /// set of validators that can sign a mined block
-            block_producers_per_epoch: HashMap<CryptoHash, Vec<ValidatorStakeView>>,
+            block_producers_per_epoch: BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
         }
 
         impl LessDummyLiteClient {
@@ -480,7 +480,7 @@ mod test {
 
             fn get_epoch_block_producers(
                 &self,
-            ) -> &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+            ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
                 &self.block_producers_per_epoch
             }
 

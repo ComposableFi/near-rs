@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{
     signature::SignatureVerification,
@@ -16,7 +16,7 @@ use sha2::{Digest as DigestTrait, Sha256};
 pub fn validate_light_block<D: Digest>(
     head: &LightClientBlockView,
     block_view: &LightClientBlockView,
-    epoch_block_producers_map: &HashMap<CryptoHash, Vec<ValidatorStakeView>>,
+    epoch_block_producers_map: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<bool> {
     //The light client updates its head with the information from LightClientBlockView iff:
 

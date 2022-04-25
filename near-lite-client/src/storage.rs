@@ -1,18 +1,18 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::types::{CryptoHash, LightClientBlockView, Signature, ValidatorStakeView};
 
 pub trait StateStorage {
     fn get_head(&self) -> &LightClientBlockView;
     fn set_new_head(&mut self, new_head: LightClientBlockView);
-    fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>>;
+    fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>;
     fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>);
 }
 // #[cfg(test)] // TODO put back when there is another impl of StateStorage
 pub struct DummyStateStorage {
     head: LightClientBlockView,
     #[allow(dead_code)]
-    block_producers_per_epoch: HashMap<CryptoHash, Vec<ValidatorStakeView>>,
+    block_producers_per_epoch: BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 }
 
 // #[cfg(test)]
@@ -37,7 +37,7 @@ impl StateStorage for DummyStateStorage {
         self.head = new_head;
     }
 
-    fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>> {
+    fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
         &self.block_producers_per_epoch
     }
 

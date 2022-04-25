@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::{
     block_validation::SubstrateDigest,
@@ -50,7 +50,7 @@ impl StateStorage for LightClient {
 
     fn get_epoch_block_producers(
         &self,
-    ) -> &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+    ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
         self.state_storage.get_epoch_block_producers()
     }
 
@@ -105,7 +105,7 @@ mod tests {
 
         fn get_epoch_block_producers(
             &self,
-        ) -> &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+        ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
             todo!()
         }
 

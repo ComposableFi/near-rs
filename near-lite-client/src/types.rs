@@ -17,7 +17,9 @@ pub enum Signature {
     Ed25519(Ed25519Signature),
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize)]
+#[derive(
+    Debug, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
+)]
 pub struct CryptoHash(pub [u8; 32]);
 
 impl Signature {
@@ -336,7 +338,7 @@ impl BorshSerialize for PublicKey {
 
 impl BorshDeserialize for PublicKey {
     fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
+        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
         Ok(Self(BorshDeserialize::deserialize(buf)?))
     }
 }
@@ -354,9 +356,9 @@ mod tests {
     }
 
     fn get_client_near_block_view(
-        CLIENT_BLOCK_RESPONSE: &str,
+        client_block_response: &str,
     ) -> io::Result<NearLightClientBlockView> {
-        Ok(serde_json::from_str::<ResultFromRpc>(CLIENT_BLOCK_RESPONSE)?.result)
+        Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result)
     }
 
     #[test]
@@ -401,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_ensure_deserialization_from_block_view_near_primitives() {
-        const client_block_view: &str = r#"
+        const CLIENT_BLOCK_VIEW: &str = r#"
         {
             "jsonrpc": "2.0",
             "result": {
@@ -894,7 +896,7 @@ mod tests {
         }
         "#;
         let client_block_near_view_next_epoch =
-            get_client_near_block_view(client_block_view).unwrap();
+            get_client_near_block_view(CLIENT_BLOCK_VIEW).unwrap();
 
         let near_client_serialized = client_block_near_view_next_epoch.try_to_vec().unwrap();
         let lite_client_block_view: LightClientBlockView =
