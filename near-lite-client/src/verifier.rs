@@ -28,6 +28,9 @@ pub trait StateTransitionVerificator: StateStorage {
 
         let head = self.get_head_mut();
         *head = block_view.clone();
+        #[cfg(test)]
+        log::info!("updated head to height = {}", head.inner_lite.height);
+
         Ok(true)
     }
 
@@ -43,7 +46,7 @@ pub trait StateTransitionVerificator: StateStorage {
             compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
 
         let block_outcome_root = compute_root_from_path::<Self::D>(
-            &outcome_root_proof,
+            &outcome_root_proof.0,
             Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
                 .as_slice()
                 .try_into()
@@ -433,7 +436,7 @@ mod test {
         assert!(dummy_lite_client
             .validate_transaction(
                 &outcome_proof,
-                outcome_root_proof,
+                MerklePath(outcome_root_proof),
                 expected_block_outcome_root,
             )
             .unwrap());

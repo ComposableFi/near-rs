@@ -1,9 +1,19 @@
 use std::io;
 
 use borsh::BorshSerialize;
-use near_primitives::views::LightClientBlockView as NearLightClientBlockView;
+use near_primitives::{
+    hash::CryptoHash,
+    merkle::MerklePath,
+    views::{
+        ExecutionOutcomeWithIdView, LightClientBlockLiteView,
+        LightClientBlockView as NearLightClientBlockView,
+    },
+};
 use near_sdk::json_types::Base58CryptoHash;
 use serde::Deserialize;
+use serde_aux::field_attributes::deserialize_number_from_string;
+
+use crate::client_proof::ExecutionOutcomeViewForLiteClient;
 
 pub enum NearNetwork {
     Mainnet,
@@ -28,6 +38,62 @@ impl NearNetwork {
 /// Connects to Near RPC and submits requests
 pub struct BlockchainConnector {
     network: NearNetwork,
+}
+
+#[derive(Debug, BorshSerialize, Deserialize)]
+pub struct RpcLightClientExecutionProofResponse {
+    /// Proof of execution outcome
+    pub outcome_proof: ExecutionOutcomeWithIdView,
+    /// Proof of shard execution outcome root
+    pub outcome_root_proof: MerklePath,
+    /// A light weight representation of block that contains the outcome root
+    pub block_header_lite: LightClientBlockLiteView,
+    /// Proof of the existence of the block in the block merkle tree,
+    /// which consists of blocks up to the light client head
+    pub block_proof: MerklePath,
+}
+
+pub struct RpcLightClientExecutionProofResponseForLiteClient {
+    /// Proof of execution outcome
+    pub outcome_proof: ExecutionOutcomeWithIdViewForLiteClient,
+    /// Proof of shard execution outcome root
+    pub outcome_root_proof: MerklePath,
+    /// A light weight representation of block that contains the outcome root
+    pub block_header_lite: LightClientBlockLiteView,
+    /// Proof of the existence of the block in the block merkle tree,
+    /// which consists of blocks up to the light client head
+    pub block_proof: MerklePath,
+}
+
+#[derive(Debug, BorshSerialize, Deserialize)]
+pub struct ExecutionOutcomeWithIdViewForLiteClient {
+    pub proof: MerklePath,
+    pub block_hash: CryptoHash,
+    pub id: CryptoHash,
+    pub outcome: ExecutionOutcomeViewForLiteClient,
+}
+
+impl From<ExecutionOutcomeWithIdView> for ExecutionOutcomeWithIdViewForLiteClient {
+    fn from(view: ExecutionOutcomeWithIdView) -> Self {
+        Self {
+            proof: view.proof,
+            block_hash: view.block_hash,
+            id: view.id,
+            outcome: view.outcome.into(),
+        }
+    }
+}
+impl From<RpcLightClientExecutionProofResponse>
+    for RpcLightClientExecutionProofResponseForLiteClient
+{
+    fn from(response: RpcLightClientExecutionProofResponse) -> Self {
+        Self {
+            outcome_proof: response.outcome_proof.into(),
+            outcome_root_proof: response.outcome_root_proof,
+            block_header_lite: response.block_header_lite,
+            block_proof: response.block_proof,
+        }
+    }
 }
 
 impl BlockchainConnector {
@@ -126,6 +192,115 @@ impl BlockchainConnector {
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
         Ok(body.into_json::<response>()?.result.header.prev_hash)
+    }
+
+    pub fn find_chunk_ids_with_burned_gas(
+        &self,
+        block_height: u64,
+    ) -> io::Result<Vec<Base58CryptoHash>> {
+        #[derive(Debug, Deserialize)]
+        struct response {
+            pub result: result,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct result {
+            pub chunks: Vec<chunks>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct chunks {
+            #[serde(deserialize_with = "deserialize_number_from_string")]
+            pub balance_burnt: u128,
+            pub chunk_hash: Base58CryptoHash,
+        }
+
+        let url = format!("{}/", self.network.get_base_url());
+        let params = ureq::json!({ "block_id": block_height });
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "block",
+                "params": params,
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+        Ok(body
+            .into_json::<response>()?
+            .result
+            .chunks
+            .into_iter()
+            .filter_map(|chunk| {
+                if chunk.balance_burnt > 0 {
+                    Some(chunk.chunk_hash)
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn get_transaction_ids_in_chunk(
+        &self,
+        chunk_id: Base58CryptoHash,
+    ) -> io::Result<Vec<(Base58CryptoHash, String)>> {
+        #[derive(Debug, Deserialize)]
+        struct response {
+            pub result: result,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct result {
+            pub transactions: Vec<tx>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct tx {
+            pub hash: Base58CryptoHash,
+            pub signer_id: String,
+        }
+
+        let url = format!("{}/", self.network.get_base_url());
+        let params = ureq::json!({ "chunk_id": chunk_id });
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "chunk",
+                "params": params,
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+        Ok(body
+            .into_json::<response>()?
+            .result
+            .transactions
+            .into_iter()
+            .flat_map(|tx| Some((tx.hash, tx.signer_id)))
+            .collect())
+    }
+
+    pub fn get_light_client_proof_transaction(
+        &self,
+        light_client_head: Base58CryptoHash,
+        tx_hash: Base58CryptoHash,
+        sender_id: String,
+    ) -> io::Result<RpcLightClientExecutionProofResponseForLiteClient> {
+        #[derive(Debug, Deserialize)]
+        struct response {
+            pub result: RpcLightClientExecutionProofResponse,
+        }
+
+        let url = format!("{}/", self.network.get_base_url());
+        let params = ureq::json!({ "type": "transaction" , "transaction_hash": tx_hash, "sender_id": sender_id, "light_client_head": light_client_head});
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "EXPERIMENTAL_light_client_proof",
+                "params": params,
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+        Ok(body.into_json::<response>()?.result.into())
     }
 }
 

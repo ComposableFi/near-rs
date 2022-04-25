@@ -12,14 +12,14 @@ pub trait StateStorage {
 pub struct DummyStateStorage {
     head: LightClientBlockView,
     #[allow(dead_code)]
-    block_producers_per_epoch: HashMap<CryptoHash, Vec<Option<Signature>>>,
+    block_producers_per_epoch: HashMap<CryptoHash, Vec<ValidatorStakeView>>,
 }
 
 // #[cfg(test)]
 impl DummyStateStorage {
     pub fn new(
         head: LightClientBlockView,
-        epoch_block_producers: (CryptoHash, Vec<Option<Signature>>),
+        epoch_block_producers: (CryptoHash, Vec<ValidatorStakeView>),
     ) -> Self {
         Self {
             head,
@@ -38,10 +38,10 @@ impl StateStorage for DummyStateStorage {
     }
 
     fn get_epoch_block_producers(&self) -> &HashMap<CryptoHash, Vec<ValidatorStakeView>> {
-        todo!()
+        &self.block_producers_per_epoch
     }
 
-    fn insert_epoch_block_producers(&mut self, _epoch: CryptoHash, _bps: Vec<ValidatorStakeView>) {
-        todo!()
+    fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
+        self.block_producers_per_epoch.insert(epoch, bps);
     }
 }

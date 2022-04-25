@@ -82,7 +82,9 @@ pub type Balance = u128;
 pub type Gas = u64;
 
 pub type MerkleHash = CryptoHash;
-pub type MerklePath = Vec<MerklePathItem>;
+
+#[derive(Debug, Clone, BorshDeserialize)]
+pub struct MerklePath(pub Vec<MerklePathItem>);
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
@@ -156,7 +158,7 @@ pub struct ExecutionOutcomeView {
     /// The amount of tokens burnt corresponding to the burnt gas amount.
     /// This value doesn't always equal to the `gas_burnt` multiplied by the gas price, because
     /// the prepaid gas price might be lower than the actual gas price and it creates a deficit.
-    pub tokens_burnt: Balance,
+    pub tokens_burnt: u128,
     /// The id of the account on which the execution happens. For transaction this is signer_id,
     /// for receipt this is receiver_id.
     pub executor_id: AccountId,
@@ -166,9 +168,9 @@ pub struct ExecutionOutcomeView {
 
 #[derive(Debug, BorshDeserialize)]
 pub struct OutcomeProof {
+    pub proof: Vec<MerklePathItem>,
     pub block_hash: CryptoHash,
     pub id: CryptoHash,
-    pub proof: Vec<MerklePathItem>,
     pub outcome: ExecutionOutcomeView,
 }
 
@@ -218,7 +220,7 @@ impl LightClientBlockView {
             next_block_inner_hash: CryptoHash([0; 32]),
             inner_lite: BlockHeaderInnerLiteView::new_for_test(),
             inner_rest_hash: CryptoHash([0; 32]),
-            next_bps: None,
+            next_bps: Some(vec![]),
             approvals_after_next: vec![],
         }
     }
@@ -303,6 +305,15 @@ impl From<BlockHeaderInnerLiteView> for BlockHeaderInnerLiteViewFinal {
         }
     }
 }
+
+impl BorshDeserialize for Signature {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
+        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
+        let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
+        Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
+    }
+}
+
 impl BorshSerialize for Signature {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
         match self {
@@ -312,14 +323,6 @@ impl BorshSerialize for Signature {
             }
         }
         Ok(())
-    }
-}
-
-impl BorshDeserialize for Signature {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
-        let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
-        Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
     }
 }
 

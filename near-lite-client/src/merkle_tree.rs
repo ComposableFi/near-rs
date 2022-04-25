@@ -1,11 +1,11 @@
 use crate::{
     block_validation::Digest,
-    types::{Direction, LiteClientResult, MerkleHash, MerklePath},
+    types::{Direction, LiteClientResult, MerkleHash, MerklePathItem},
 };
 use borsh::BorshSerialize;
 
 pub fn compute_root_from_path<D: Digest>(
-    path: &MerklePath,
+    path: &Vec<MerklePathItem>,
     item_hash: MerkleHash,
 ) -> LiteClientResult<MerkleHash> {
     let mut res = item_hash;

@@ -13,9 +13,6 @@ use crate::{
 /// It is also able to verify a new state transition, and update its head.
 #[allow(dead_code)]
 pub struct LightClient {
-    // current block view tracked by the client which has been validated
-    head: LightClientBlockView,
-
     /// how many epochs the light client will track
     relevant_epochs: usize,
 
@@ -30,12 +27,15 @@ impl LightClient {
                 head.clone(),
                 (
                     head.inner_lite.next_epoch_id,
-                    head.approvals_after_next.clone(),
+                    head.next_bps.as_ref().unwrap().clone(),
                 ),
             ),
             relevant_epochs,
-            head,
         }
+    }
+
+    pub fn current_block_height(&self) -> u64 {
+        self.state_storage.get_head().inner_lite.height
     }
 }
 
@@ -51,23 +51,16 @@ impl StateStorage for LightClient {
     fn get_epoch_block_producers(
         &self,
     ) -> &HashMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
-        todo!()
+        self.state_storage.get_epoch_block_producers()
     }
 
-    fn insert_epoch_block_producers(&mut self, _epoch: CryptoHash, _bps: Vec<ValidatorStakeView>) {
-        todo!()
+    fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
+        self.state_storage.insert_epoch_block_producers(epoch, bps)
     }
 }
 
 impl StateTransitionVerificator for LightClient {
     type D = SubstrateDigest;
-
-    fn validate_and_update_head(
-        &mut self,
-        _block_view: &LightClientBlockView,
-    ) -> LiteClientResult<bool> {
-        Ok(true)
-    }
 }
 
 #[cfg(test)]
@@ -91,7 +84,10 @@ mod tests {
             Self {
                 storage: DummyStateStorage::new(
                     head.clone(),
-                    (head.inner_lite.next_epoch_id, head.approvals_after_next),
+                    (
+                        head.inner_lite.next_epoch_id,
+                        head.next_bps.as_ref().unwrap().clone(),
+                    ),
                 ),
             }
         }
