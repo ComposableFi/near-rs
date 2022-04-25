@@ -6,7 +6,7 @@ use near_lite_relayer::{
 };
 
 #[tokio::test]
-async fn main() {
+async fn relayer_fetches_data_and_does_simple_validation() {
     env_logger::init();
 
     let blockchain_connector = BlockchainConnector::new(NearNetwork::Testnet);
