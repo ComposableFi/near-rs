@@ -228,18 +228,6 @@ impl LightClientBlockView {
     }
 }
 
-impl LightClientBlockLiteView {
-    pub fn current_block_hash<D: Digest>(&self) -> CryptoHash {
-        current_block_hash::<D>(
-            D::digest(self.inner_lite.try_to_vec().unwrap())
-                .as_slice()
-                .try_into()
-                .unwrap(),
-            self.inner_rest_hash,
-            self.prev_block_hash,
-        )
-    }
-}
 /// The hash of the block is:
 /// ```ignore
 /// sha256(concat(

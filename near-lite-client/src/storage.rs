@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::types::{CryptoHash, LightClientBlockView, Signature, ValidatorStakeView};
+use crate::types::{CryptoHash, LightClientBlockView, ValidatorStakeView};
 
 pub trait StateStorage {
     fn get_head(&self) -> &LightClientBlockView;
