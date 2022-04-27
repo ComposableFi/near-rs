@@ -7,6 +7,7 @@ use crate::{
         OutcomeProof,
     },
 };
+use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
 pub trait StateTransitionVerificator: StateStorage {

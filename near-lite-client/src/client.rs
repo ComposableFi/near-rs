@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
     block_validation::SubstrateDigest,

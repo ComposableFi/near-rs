@@ -1,6 +1,5 @@
-use borsh::maybestd::io::Write;
-use core::fmt;
-use std::fmt::Display;
+use borsh::maybestd::{io::Write, string::String};
+use sp_std::vec::Vec;
 
 use crate::{block_validation::Digest, error::NearLiteClientError};
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -272,12 +271,6 @@ impl BlockHeaderInnerLiteView {
             next_bp_hash: CryptoHash([0; 32]),
             block_merkle_root: CryptoHash([0; 32]),
         }
-    }
-}
-
-impl Display for ConversionError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{:?}", self)
     }
 }
 

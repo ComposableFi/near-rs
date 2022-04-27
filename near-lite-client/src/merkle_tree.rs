@@ -3,6 +3,7 @@ use crate::{
     types::{Direction, LiteClientResult, MerkleHash, MerklePathItem},
 };
 use borsh::BorshSerialize;
+use sp_std::vec::Vec;
 
 pub fn compute_root_from_path<D: Digest>(
     path: &Vec<MerklePathItem>,
