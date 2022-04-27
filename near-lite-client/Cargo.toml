@@ -25,7 +25,7 @@ serde_json = "1.0.79"
 [features]
 default = ["std"]
 std = [
-    # "borsh/std",
+    "borsh/std",
     "sp-io/std",
     "sp-core/std",
     "sp-std/std",
