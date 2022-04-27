@@ -16,14 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly-2021-11-08
-        components: rustfmt
-        target: wasm32-unknown-unknown
-        override: true
-        default: true
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-11-08
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          override: true
+          default: true
       - name: Build
         run: cargo build --verbose
       - name: Check near light client
