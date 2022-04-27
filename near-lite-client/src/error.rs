@@ -1,13 +1,9 @@
 use crate::types::ConversionError;
 use borsh::maybestd::io::Error as BorshError;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum NearLiteClientError {
-    #[error("Borsh error {0}")]
     Borsh(BorshError),
-
-    #[error("Conversion error {0}")]
     Conversion(ConversionError),
 }
 

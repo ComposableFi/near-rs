@@ -18,6 +18,7 @@
 //! lite_client.validate_and_update_head(block_view);
 //! lite_client.validate_transaction(outcome_proof, outcome_root_proof, expected_block_outcome_root);
 //! ```
+#![cfg_attr(not(feature = "std"), no_std)]
 
 mod block_validation;
 mod checkpoint;
