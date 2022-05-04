@@ -1,12 +1,14 @@
 package types
 
 import (
+	"encoding/json"
 	"math/big"
 
 	"github.com/near/borsh-go"
 )
 
 type CryptoHash = [32]uint8
+type CryptoHashBase58Encoded = string
 type Gas = uint64
 type Balance = big.Int // borsh maps u128 -> big.Int
 type BlockHeight = uint64
@@ -57,6 +59,19 @@ type ValidatorStakeView struct {
 	V2   ValidatorStakeViewV2
 }
 
+type BlockHeaderInnerLiteViewJson struct {
+	Height        BlockHeight             `json:"height"`
+	EpochId       CryptoHashBase58Encoded `json:"epoch_id"`
+	NextEpochId   CryptoHashBase58Encoded `json:"next_epoch_id"`
+	PrevStateRoot CryptoHashBase58Encoded `json:"prev_state_root"`
+	OutcomeRoot   CryptoHashBase58Encoded `json:"outcome_root"`
+	/// Legacy json number. Should not be used.
+	Timestamp        uint64                  `json:"timestamp"`
+	TimestampNanosec string                  `json:"timestamp_nanosec"`
+	NextBpHash       CryptoHashBase58Encoded `json:"next_bp_hash"`
+	BlockMerkleRoot  CryptoHashBase58Encoded `json:"block_merkle_root"`
+}
+
 type BlockHeaderInnerLiteView struct {
 	Height        BlockHeight
 	EpochId       CryptoHash
@@ -70,13 +85,22 @@ type BlockHeaderInnerLiteView struct {
 	BlockMerkleRoot  CryptoHash
 }
 
+type LightClientBlockViewJson struct {
+	PrevBlockHash      CryptoHashBase58Encoded      `json:"prev_block_hash"`
+	NextBlockInnerHash CryptoHashBase58Encoded      `json:"next_block_inner_hash"`
+	InneLite           BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+	InnerRestHash      json.RawMessage              `json:"inner_rest_hash"`
+	NextBps            *[]json.RawMessage           `json:"next_bps"`
+	ApprovalsAfterNext []*json.RawMessage           `json:"approvals_after_next"`
+}
+
 type LightClientBlockView struct {
-	PrevBlockHash        CryptoHash
-	NextBlockInnerHash   CryptoHash
-	InneLite             BlockHeaderInnerLiteView
-	InnerRestHash        CryptoHash
-	NextBps              *[]ValidatorStakeView
-	approvals_after_next []*Signature
+	PrevBlockHash      CryptoHash
+	NextBlockInnerHash CryptoHash
+	InneLite           BlockHeaderInnerLiteView
+	InnerRestHash      CryptoHash
+	NextBps            *[]ValidatorStakeView
+	ApprovalsAfterNext []*json.RawMessage
 }
 
 type LightClientBlockLiteView struct {
@@ -91,3 +115,6 @@ const (
 	Left Direction = iota
 	Right
 )
+
+// rpc types
+type Base58CryptoHash = string
