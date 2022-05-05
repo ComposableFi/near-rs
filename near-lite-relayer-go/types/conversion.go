@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 )
 
-func (j *LightClientBlockViewJson) IntoLightClientBlockView() *LightClientBlockView {
+func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlockView, error) {
 	var prevBlockHash [32]byte
 	var nextBlockInnerHash [32]byte
 	var innerRestHash [32]byte
@@ -18,14 +18,23 @@ func (j *LightClientBlockViewJson) IntoLightClientBlockView() *LightClientBlockV
 	copy(nextBlockInnerHash[:], base58.Decode(j.NextBlockInnerHash))
 	copy(innerRestHash[:], base58.Decode(j.InnerRestHash))
 
+	nextBps, err := IntoNextValidatorStakeViews(j.NextBps)
+	if err != nil {
+		return nil, err
+	}
+	approvalsAfterNext, err := IntoSignatures(j.ApprovalsAfterNext)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LightClientBlockView{
 		PrevBlockHash:      prevBlockHash,
 		NextBlockInnerHash: nextBlockInnerHash,
 		InneLite:           j.InnerLite.IntoBlockHeaderInnerLiteView(),
 		InnerRestHash:      innerRestHash,
-		NextBps:            nil,
-		ApprovalsAfterNext: []*json.RawMessage{},
-	}
+		NextBps:            nextBps,
+		ApprovalsAfterNext: approvalsAfterNext,
+	}, err
 }
 
 func (j *BlockHeaderInnerLiteViewJson) IntoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
@@ -91,6 +100,37 @@ func IntoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeVie
 		default:
 			return nil, errors.New("validator stake view only implemented for v1 or v2")
 		}
+	}
+	return result, nil
+}
+
+func IntoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error) {
+	// "ed25519:4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc"
+	knownPrefix := "ed25519:"
+	var result []*Signature
+	for _, signatureEncoded := range approvalsAfterNext {
+		if signatureEncoded == nil {
+			result = append(result, nil)
+			continue
+		}
+		var serializedData string
+		json.Unmarshal([]byte(*signatureEncoded), &serializedData)
+		if !strings.HasPrefix(serializedData, knownPrefix) {
+			return nil, errors.New("unknown signature type")
+		}
+
+		splittedString := strings.Split(serializedData, ":")
+		// decode the signature (which expressed in base58)
+		data := base58.Decode(splittedString[1])
+		if len(data) != 64 {
+			return nil, errors.New("signature size must be of 64 bytes")
+		}
+
+		var signatureData [64]byte
+		copy(signatureData[:], data)
+		result = append(result, &Signature{
+			ED25519: signatureData,
+		})
 	}
 	return result, nil
 }

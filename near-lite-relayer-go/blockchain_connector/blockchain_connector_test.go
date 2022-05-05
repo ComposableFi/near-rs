@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -545,8 +546,13 @@ func TestUnmarshalLightClientBlockView(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(r.Result)
-
+	lightClientBLockView, err := r.Result.IntoLightClientBlockView()
+	assert.Equal(t,
+		"4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc",
+		base58.Encode(lightClientBLockView.ApprovalsAfterNext[0].ED25519[:]),
+	)
+	assert.Nil(t, lightClientBLockView.ApprovalsAfterNext[1])
+	assert.Equal(t, "H8sRpqgZcW2xzQgKKbmCoTszfz8tsKcPxcZMbNDSNJRV", base58.Encode(lightClientBLockView.PrevBlockHash[:]))
 }
 
 func TestUnmarshalLightClientBlockViewInnerLite(t *testing.T) {

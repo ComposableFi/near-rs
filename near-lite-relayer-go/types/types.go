@@ -100,7 +100,7 @@ type LightClientBlockView struct {
 	InneLite           BlockHeaderInnerLiteView
 	InnerRestHash      CryptoHash
 	NextBps            []ValidatorStakeView
-	ApprovalsAfterNext []*json.RawMessage
+	ApprovalsAfterNext []*Signature
 }
 
 type LightClientBlockLiteView struct {

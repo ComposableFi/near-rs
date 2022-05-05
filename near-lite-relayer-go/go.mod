@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
+	github.com/mr-tron/base58 v1.2.0
 	github.com/near/borsh-go v0.3.1
 	github.com/stretchr/testify v1.7.1
 )
