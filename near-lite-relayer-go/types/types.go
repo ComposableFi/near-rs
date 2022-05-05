@@ -24,9 +24,9 @@ type MerklePathItem struct {
 type MerklePath = []MerklePathItem
 
 type ValidatorStakeViewV1 struct {
-	account_id AccountId
-	public_key PublicKey
-	Stake      Balance
+	AccountId AccountId
+	PublicKey PublicKey
+	Stake     Balance
 }
 
 type ValidatorStakeViewV2 struct {
@@ -80,7 +80,7 @@ type BlockHeaderInnerLiteView struct {
 	OutcomeRoot   CryptoHash
 	/// Legacy json number. Should not be used.
 	Timestamp        uint64
-	TimestampNanosec uint64
+	TimestampNanosec string
 	NextBpHash       CryptoHash
 	BlockMerkleRoot  CryptoHash
 }
@@ -88,9 +88,9 @@ type BlockHeaderInnerLiteView struct {
 type LightClientBlockViewJson struct {
 	PrevBlockHash      CryptoHashBase58Encoded      `json:"prev_block_hash"`
 	NextBlockInnerHash CryptoHashBase58Encoded      `json:"next_block_inner_hash"`
-	InneLite           BlockHeaderInnerLiteViewJson `json:"inner_lite"`
-	InnerRestHash      json.RawMessage              `json:"inner_rest_hash"`
-	NextBps            *[]json.RawMessage           `json:"next_bps"`
+	InnerLite          BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+	InnerRestHash      CryptoHashBase58Encoded      `json:"inner_rest_hash"`
+	NextBps            []json.RawMessage            `json:"next_bps"`
 	ApprovalsAfterNext []*json.RawMessage           `json:"approvals_after_next"`
 }
 
@@ -99,7 +99,7 @@ type LightClientBlockView struct {
 	NextBlockInnerHash CryptoHash
 	InneLite           BlockHeaderInnerLiteView
 	InnerRestHash      CryptoHash
-	NextBps            *[]ValidatorStakeView
+	NextBps            []ValidatorStakeView
 	ApprovalsAfterNext []*json.RawMessage
 }
 
@@ -118,3 +118,15 @@ const (
 
 // rpc types
 type Base58CryptoHash = string
+
+func NewValidatorStakeViewFromV1(v1 ValidatorStakeViewV1) ValidatorStakeView {
+	return ValidatorStakeView{
+		V1: v1,
+	}
+}
+
+func NewValidatorStakeViewFromV2(v2 ValidatorStakeViewV2) ValidatorStakeView {
+	return ValidatorStakeView{
+		V2: v2,
+	}
+}
