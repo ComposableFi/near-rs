@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
@@ -14,22 +13,30 @@ import (
 type NearNetwork string
 
 const (
-	Mainnet NearNetwork = "Mainnet"
-	Testnet NearNetwork = "Testnet"
+	Mainnet        NearNetwork = "Mainnet"
+	Testnet        NearNetwork = "Testnet"
+	ArchiveMainnet NearNetwork = "ArchiveMainnet"
+	ArchiveTestnet NearNetwork = "ArchiveTestnet"
 )
 
 func (n NearNetwork) ToString() string {
 	switch n {
-	case Mainnet:
+	case Mainnet, ArchiveMainnet:
 		return "mainnet"
-	case Testnet:
+	case Testnet, ArchiveTestnet:
 		return "testnet"
 	}
 	panic("unreachable")
 }
 
 func (n NearNetwork) getBaseUrl() string {
-	return fmt.Sprintf("https://rpc.%s.near.org", n.ToString())
+	switch n {
+	case Mainnet, Testnet:
+		return fmt.Sprintf("https://rpc.%s.near.org", n.ToString())
+	case ArchiveMainnet, ArchiveTestnet:
+		return fmt.Sprintf("https://archival-rpc.%s.near.org", n.ToString())
+	}
+	panic("unreachable")
 }
 
 type BlockchainConector struct {
@@ -40,7 +47,7 @@ func NewBlockchainConnector(network NearNetwork) *BlockchainConector {
 	return &BlockchainConector{network: network}
 }
 
-func (bc *BlockchainConector) GetLightClientBlockView(lastKnownHash types.Base58CryptoHash) (*types.LightClientBlockViewJson, error) {
+func (bc *BlockchainConector) GetLightClientBlockView(lastKnownHash types.Base58CryptoHash) (*types.LightClientBlockView, error) {
 	url := fmt.Sprintf("%s/", bc.network.getBaseUrl())
 
 	postBody, _ := json.Marshal(map[string]interface{}{
@@ -66,10 +73,9 @@ func (bc *BlockchainConector) GetLightClientBlockView(lastKnownHash types.Base58
 	}
 
 	var r response
-	log.Println(string(body)[:200])
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		return nil, err
 	}
-	return &r.Result, nil
+	return r.Result.IntoLightClientBlockView()
 }

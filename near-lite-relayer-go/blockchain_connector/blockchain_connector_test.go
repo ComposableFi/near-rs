@@ -19,6 +19,15 @@ func TestNearNetwork(t *testing.T) {
 	assert.Equal(t, "https://rpc.mainnet.near.org", mainnet.getBaseUrl())
 }
 
+func TestGetLightClientBlockView(t *testing.T) {
+	// go to the archive testnet to ensure that the block is present
+	blockchainConnector := NewBlockchainConnector(ArchiveTestnet)
+	_, err := blockchainConnector.GetLightClientBlockView("9exTJWj5ESCBG93Brc5qHyr7twLNaNaEWwNaj2ieVAEL")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestUnmarshalLightClientBlockView(t *testing.T) {
 	payload := `{
 		"jsonrpc": "2.0",
