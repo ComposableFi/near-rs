@@ -27,18 +27,17 @@ type LiteClient struct {
 
 func NewLiteClientFromCheckpoint(checkpoint types.LightClientBlockView) *LiteClient {
 	epochBlockProducers := make(map[types.CryptoHash][]types.ValidatorStakeView)
-	epochBlockProducers[checkpoint.InneLite.NextEpochId] = checkpoint.NextBps
+	epochBlockProducers[checkpoint.InnerLite.NextEpochId] = checkpoint.NextBps
 	return &LiteClient{
 		head:                checkpoint,
-		epochBlockProducers: map[types.CryptoHash][]types.ValidatorStakeView{},
+		epochBlockProducers: epochBlockProducers,
 	}
 }
 
 func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView) (bool, error) {
 	log.Printf("Validating block view for height=%d on epoch=%s",
-		blockView.InneLite.Height, base58.Encode(blockView.InneLite.EpochId[:]),
+		blockView.InnerLite.Height, base58.Encode(blockView.InnerLite.EpochId[:]),
 	)
-
 	_, _, approvalMessage, err := reconstrunctLightClientBlockViewFields(blockView)
 	if err != nil {
 		return false, err
@@ -46,17 +45,17 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 	head := l.head
 
 	// (1)
-	if blockView.InneLite.Height <= head.InneLite.Height {
+	if blockView.InnerLite.Height <= head.InnerLite.Height {
 		return false, nil
 	}
 
 	// (2)
-	if !(blockView.InneLite.EpochId == head.InneLite.EpochId || blockView.InneLite.EpochId == head.InneLite.NextEpochId) {
+	if !(blockView.InnerLite.EpochId == head.InnerLite.EpochId || blockView.InnerLite.EpochId == head.InnerLite.NextEpochId) {
 		return false, nil
 	}
 
 	// (3)
-	if blockView.InneLite.EpochId == head.InneLite.NextEpochId && blockView.NextBps == nil {
+	if blockView.InnerLite.EpochId == head.InnerLite.NextEpochId && blockView.NextBps == nil {
 		return false, nil
 	}
 
@@ -64,9 +63,9 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 	totalStake := big.Int{}
 	approvedStake := big.Int{}
 
-	epochBlockProducers, ok := l.epochBlockProducers[blockView.InneLite.EpochId]
+	epochBlockProducers, ok := l.epochBlockProducers[blockView.InnerLite.EpochId]
 	if !ok {
-		return false, errors.New(fmt.Sprintf("epochBlockProducer not found for epoch id %s", base58.Encode(blockView.InneLite.EpochId[:])))
+		return false, errors.New(fmt.Sprintf("epochBlockProducer not found for epoch id %s", base58.Encode(blockView.InnerLite.EpochId[:])))
 	}
 
 	for i := range blockView.ApprovalsAfterNext {
@@ -83,7 +82,7 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 		approvedStake.Add(&approvedStake, &bpStake)
 
 		publicKey := blockProducer.V1.PublicKey
-		if !ed25519.Verify(publicKey.ED25519[:], approvalMessage, maybeSignature.ED25519[:]) {
+		if !ed25519.Verify(publicKey.ED25519.Inner[:], approvalMessage, maybeSignature.ED25519[:]) {
 			return false, nil
 		}
 	}
@@ -101,12 +100,13 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 		if err != nil {
 			return false, err
 		}
-		if sha256.Sum256(serializedNextBps) != blockView.InneLite.NextBpHash {
+		if sha256.Sum256(serializedNextBps) != blockView.InnerLite.NextBpHash {
+			log.Println("ASD222223332")
 			return false, nil
 		}
 	}
 
-	l.epochBlockProducers[blockView.InneLite.NextEpochId] = blockView.NextBps
+	l.epochBlockProducers[blockView.InnerLite.NextEpochId] = blockView.NextBps
 	l.head = *blockView
 
 	return true, nil
@@ -121,27 +121,27 @@ func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockVie
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
 	approvalInner := types.ApprovalInner{
-		Enum:        1,
-		Endorsement: *nextBlockHash,
+		Enum: 0,
+		Endorsement: types.Endorsement{
+			Inner: *nextBlockHash,
+		},
 	}
 	approvalInnerSerialized, err := borsh.Serialize(approvalInner)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(blockView.InneLite.Height+2))
+	binary.LittleEndian.PutUint64(b, uint64(blockView.InnerLite.Height+2))
 	var approvalMessage []byte
 	approvalMessage = append(approvalInnerSerialized, b...)
-
 	return currentBlockHash, &blockView.NextBlockInnerHash, approvalMessage, nil
 
 }
 
 func currentBlockHash(blockView *types.LightClientBlockView) (*types.CryptoHash, error) {
 
-	innerLiteSerialized, err := borsh.Serialize(blockView.InneLite)
+	innerLiteSerialized, err := borsh.Serialize(blockView.InnerLite)
 	if err != nil {
 		return nil, err
 	}

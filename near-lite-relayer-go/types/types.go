@@ -38,12 +38,14 @@ type ValidatorStakeViewV2 struct {
 
 // crypto primitives
 type Signature struct {
-	Enum    borsh.Enum `borsh_enum:"true"`
+	Enum    uint8
 	ED25519 [64]byte
 	// SECP256K1 []byte // TODO: be more specific on the number of bytes
 }
 
-type ED25519PublicKey = [32]byte
+type ED25519PublicKey struct {
+	Inner CryptoHash
+}
 
 type PublicKey struct {
 	Enum    borsh.Enum `borsh_enum:"true"`
@@ -54,7 +56,11 @@ type PublicKey struct {
 
 type ApprovalInner struct {
 	Enum        borsh.Enum `borsh_enum:"true"`
-	Endorsement CryptoHash
+	Endorsement Endorsement
+}
+
+type Endorsement struct {
+	Inner CryptoHash
 }
 
 // rpc structs
@@ -101,7 +107,7 @@ type LightClientBlockViewJson struct {
 type LightClientBlockView struct {
 	PrevBlockHash      CryptoHash
 	NextBlockInnerHash CryptoHash
-	InneLite           BlockHeaderInnerLiteView
+	InnerLite          BlockHeaderInnerLiteView
 	InnerRestHash      CryptoHash
 	NextBps            []ValidatorStakeView
 	ApprovalsAfterNext []*Signature
@@ -110,7 +116,7 @@ type LightClientBlockView struct {
 type LightClientBlockLiteView struct {
 	PrevBlockHash CryptoHash
 	InnerRestHash CryptoHash
-	InneLite      BlockHeaderInnerLiteView
+	InnerLite     BlockHeaderInnerLiteView
 }
 
 // RpcLightClientExecutionProofResponse
@@ -125,12 +131,14 @@ type Base58CryptoHash = string
 
 func NewValidatorStakeViewFromV1(v1 ValidatorStakeViewV1) ValidatorStakeView {
 	return ValidatorStakeView{
-		V1: v1,
+		Enum: 0,
+		V1:   v1,
 	}
 }
 
 func NewValidatorStakeViewFromV2(v2 ValidatorStakeViewV2) ValidatorStakeView {
 	return ValidatorStakeView{
-		V2: v2,
+		Enum: 1,
+		V2:   v2,
 	}
 }

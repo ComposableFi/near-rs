@@ -30,7 +30,7 @@ func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlock
 	return &LightClientBlockView{
 		PrevBlockHash:      prevBlockHash,
 		NextBlockInnerHash: nextBlockInnerHash,
-		InneLite:           j.InnerLite.IntoBlockHeaderInnerLiteView(),
+		InnerLite:          j.InnerLite.IntoBlockHeaderInnerLiteView(),
 		InnerRestHash:      innerRestHash,
 		NextBps:            nextBps,
 		ApprovalsAfterNext: approvalsAfterNext,
@@ -128,6 +128,7 @@ func IntoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error)
 		var signatureData [64]byte
 		copy(signatureData[:], data)
 		result = append(result, &Signature{
+			Enum:    0,
 			ED25519: signatureData,
 		})
 	}
@@ -151,5 +152,10 @@ func unmarshallPublicKey(serializedData string) (*PublicKey, error) {
 
 	var publicKeyData [32]byte
 	copy(publicKeyData[:], data)
-	return &PublicKey{ED25519: publicKeyData}, nil
+	return &PublicKey{
+		Enum: 0,
+		ED25519: ED25519PublicKey{
+			Inner: publicKeyData,
+		},
+	}, nil
 }
