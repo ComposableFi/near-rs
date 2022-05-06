@@ -52,6 +52,11 @@ type PublicKey struct {
 	// SECP256K1 Secp256K1PublicKey
 }
 
+type ApprovalInner struct {
+	Enum        borsh.Enum `borsh_enum:"true"`
+	Endorsement CryptoHash
+}
+
 // rpc structs
 type ValidatorStakeView struct {
 	Enum borsh.Enum `borsh_enum:"true"`
