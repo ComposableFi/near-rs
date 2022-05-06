@@ -48,15 +48,14 @@ func (j *BlockHeaderInnerLiteViewJson) IntoBlockHeaderInnerLiteView() BlockHeade
 	copy(blockMerkleRoot[:], base58.Decode(j.BlockMerkleRoot))
 
 	return BlockHeaderInnerLiteView{
-		Height:           j.Height,
-		EpochId:          epochId,
-		NextEpochId:      nextEpochId,
-		PrevStateRoot:    prevStateRoot,
-		OutcomeRoot:      outcomeRoot,
-		Timestamp:        j.Timestamp,
-		TimestampNanosec: j.TimestampNanosec,
-		NextBpHash:       nextBpHash,
-		BlockMerkleRoot:  blockMerkleRoot,
+		Height:          j.Height,
+		EpochId:         epochId,
+		NextEpochId:     nextEpochId,
+		PrevStateRoot:   prevStateRoot,
+		OutcomeRoot:     outcomeRoot,
+		Timestamp:       j.Timestamp,
+		NextBpHash:      nextBpHash,
+		BlockMerkleRoot: blockMerkleRoot,
 	}
 }
 

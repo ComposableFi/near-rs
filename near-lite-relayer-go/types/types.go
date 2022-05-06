@@ -84,10 +84,9 @@ type BlockHeaderInnerLiteView struct {
 	PrevStateRoot CryptoHash
 	OutcomeRoot   CryptoHash
 	/// Legacy json number. Should not be used.
-	Timestamp        uint64
-	TimestampNanosec string
-	NextBpHash       CryptoHash
-	BlockMerkleRoot  CryptoHash
+	Timestamp       uint64
+	NextBpHash      CryptoHash
+	BlockMerkleRoot CryptoHash
 }
 
 type LightClientBlockViewJson struct {
