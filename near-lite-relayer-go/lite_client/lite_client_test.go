@@ -508,7 +508,7 @@ const PAYLOAD string = `{
 	"id": "idontcare"
 }`
 
-func TestCalculateCurrentBlockHahs(t *testing.T) {
+func getLightClientBlockView() (*types.LightClientBlockView, error) {
 	type response struct {
 		Result types.LightClientBlockViewJson `json:"result"`
 	}
@@ -518,8 +518,14 @@ func TestCalculateCurrentBlockHahs(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	lightClientBLockView, err := r.Result.IntoLightClientBlockView()
-	log.Println(lightClientBLockView.InneLite.Height)
+	return r.Result.IntoLightClientBlockView()
+}
+
+func TestCalculateCurrentBlockHahs(t *testing.T) {
+	lightClientBLockView, err := getLightClientBlockView()
+	if err != nil {
+		log.Fatal(err)
+	}
 	currentBlockHash, err := currentBlockHash(lightClientBLockView)
 	if err != nil {
 		log.Fatal(err)
@@ -529,16 +535,10 @@ func TestCalculateCurrentBlockHahs(t *testing.T) {
 }
 
 func TestNextBlockHash(t *testing.T) {
-	type response struct {
-		Result types.LightClientBlockViewJson `json:"result"`
-	}
-
-	var r response
-	err := json.Unmarshal([]byte(PAYLOAD), &r)
+	lightClientBLockView, err := getLightClientBlockView()
 	if err != nil {
 		log.Fatal(err)
 	}
-	lightClientBLockView, err := r.Result.IntoLightClientBlockView()
 	currentBlockHash, err := currentBlockHash(lightClientBLockView)
 	if err != nil {
 		log.Fatal(err)
@@ -548,4 +548,17 @@ func TestNextBlockHash(t *testing.T) {
 		log.Fatal(err)
 	}
 	assert.Equal(t, base58.Encode(nextBlockHash[:]), "HNfD1Kex1awMexrsjCUa8bUrykMecGUpysLv5dBTj5pK")
+}
+
+func TestApprovalMessage(t *testing.T) {
+
+	lightClientBLockView, err := getLightClientBlockView()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, _, approvalMessage, err := reconstrunctLightClientBlockViewFields(lightClientBLockView)
+	if err != nil {
+		log.Fatal(err)
+	}
+	assert.Equal(t, base58.Encode(approvalMessage), "1D66k83oBABk1APcAcLQ1PAbXNixddhUJxhqWuGwTe8hLoxwsu8FJtgP")
 }

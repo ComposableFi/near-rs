@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"log"
 	"math/big"
 	"testing"
 
@@ -54,7 +53,6 @@ func TestIntoIntoSignatures(t *testing.T) {
 	}
 	var s [64]byte
 	copy(s[:], base58.Decode("4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc"))
-	log.Println(signatures[0])
 	assert.Nil(t, signatures[0])
 	assert.Equal(t, signatures[1], &Signature{
 		ED25519: s,

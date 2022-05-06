@@ -49,6 +49,7 @@ func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockVie
 	}
 
 	approvalInner := types.ApprovalInner{
+		Enum:        1,
 		Endorsement: *nextBlockHash,
 	}
 	approvalInnerSerialized, err := borsh.Serialize(approvalInner)
@@ -66,14 +67,12 @@ func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockVie
 
 func currentBlockHash(blockView *types.LightClientBlockView) (*types.CryptoHash, error) {
 
-	log.Println(base58.Encode(blockView.InneLite.OutcomeRoot[:]))
 	innerLiteSerialized, err := borsh.Serialize(blockView.InneLite)
 	if err != nil {
 		return nil, err
 	}
 
 	innertLiteHash := sha256.Sum256(innerLiteSerialized)
-	log.Println(innertLiteHash)
 	// concatenate innerLiteHash with innerRestHash
 	x := []byte{}
 	x = append(innertLiteHash[:], blockView.InnerRestHash[:]...)
