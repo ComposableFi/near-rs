@@ -2097,3 +2097,21 @@ func TestValidateAndUpdateHeadValidBlockNextEpoch(t *testing.T) {
 
 	assert.True(t, result)
 }
+
+func TestValidateAndUpdateHeadValidBlockPreviousEpoch(t *testing.T) {
+	lightClientBLockViewPreviousEpoch, err := getLightClientBlockView(CLIENT_RESPONSE_PREVIOUS_EPOCH)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lightClientBLockViewCurrentEpoch, err := getLightClientBlockView(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	liteClient := NewLiteClientFromCheckpoint(*lightClientBLockViewCurrentEpoch)
+	result, err := liteClient.ValidateAndUpdateHead(lightClientBLockViewPreviousEpoch)
+	if err != nil {
+		log.Fatal(err)
+	}
+	assert.False(t, result)
+}
