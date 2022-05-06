@@ -7,9 +7,13 @@
 package lite_client
 
 import (
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
 	"github.com/mr-tron/base58"
@@ -30,12 +34,82 @@ func NewLiteClientFromCheckpoint(checkpoint types.LightClientBlockView) *LiteCli
 	}
 }
 
-func (l *LiteClient) ValidateAndUpdateHead(blockView types.LightClientBlockView) bool {
+func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView) (bool, error) {
 	log.Printf("Validating block view for height=%d on epoch=%s",
 		blockView.InneLite.Height, base58.Encode(blockView.InneLite.EpochId[:]),
 	)
 
-	return true
+	_, _, approvalMessage, err := reconstrunctLightClientBlockViewFields(blockView)
+	if err != nil {
+		return false, err
+	}
+	head := l.head
+
+	// (1)
+	if blockView.InneLite.Height <= head.InneLite.Height {
+		return false, nil
+	}
+
+	// (2)
+	if !(blockView.InneLite.EpochId == head.InneLite.EpochId || blockView.InneLite.EpochId == head.InneLite.NextEpochId) {
+		return false, nil
+	}
+
+	// (3)
+	if blockView.InneLite.EpochId == head.InneLite.NextEpochId && blockView.NextBps == nil {
+		return false, nil
+	}
+
+	//  (4) and (5)
+	totalStake := big.Int{}
+	approvedStake := big.Int{}
+
+	epochBlockProducers, ok := l.epochBlockProducers[blockView.InneLite.EpochId]
+	if !ok {
+		return false, errors.New(fmt.Sprintf("epochBlockProducer not found for epoch id %s", base58.Encode(blockView.InneLite.EpochId[:])))
+	}
+
+	for i := range blockView.ApprovalsAfterNext {
+		maybeSignature := blockView.ApprovalsAfterNext[i]
+		blockProducer := epochBlockProducers[i]
+
+		// TODO: handle v2 as well
+		bpStake := blockProducer.V1.Stake
+		totalStake.Add(&totalStake, &bpStake)
+		if maybeSignature == nil {
+			continue
+		}
+
+		approvedStake.Add(&approvedStake, &bpStake)
+
+		publicKey := blockProducer.V1.PublicKey
+		if !ed25519.Verify(publicKey.ED25519[:], approvalMessage, maybeSignature.ED25519[:]) {
+			return false, nil
+		}
+	}
+
+	t := totalStake.Mul(&totalStake, big.NewInt(2))
+	threshold := t.Div(t, big.NewInt(3))
+	if approvedStake.Cmp(threshold) == -1 {
+		return false, nil
+	}
+
+	// # (6)
+	if blockView.NextBps != nil {
+
+		serializedNextBps, err := borsh.Serialize(blockView.NextBps)
+		if err != nil {
+			return false, err
+		}
+		if sha256.Sum256(serializedNextBps) != blockView.InneLite.NextBpHash {
+			return false, nil
+		}
+	}
+
+	l.epochBlockProducers[blockView.InneLite.NextEpochId] = blockView.NextBps
+	l.head = *blockView
+
+	return true, nil
 }
 
 func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockView) (*types.CryptoHash, *types.CryptoHash, []byte, error) {
