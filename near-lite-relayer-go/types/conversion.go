@@ -9,14 +9,13 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 )
 
-func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlockView, error) {
-	var prevBlockHash [32]byte
-	var nextBlockInnerHash [32]byte
-	var innerRestHash [32]byte
+func IntoCryptoHash(b Base58CryptoHash) CryptoHash {
+	var result CryptoHash
+	copy(result[:], base58.Decode(b))
+	return result
+}
 
-	copy(prevBlockHash[:], base58.Decode(j.PrevBlockHash))
-	copy(nextBlockInnerHash[:], base58.Decode(j.NextBlockInnerHash))
-	copy(innerRestHash[:], base58.Decode(j.InnerRestHash))
+func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlockView, error) {
 
 	nextBps, err := IntoNextValidatorStakeViews(j.NextBps)
 	if err != nil {
@@ -28,34 +27,25 @@ func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlock
 	}
 
 	return &LightClientBlockView{
-		PrevBlockHash:      prevBlockHash,
-		NextBlockInnerHash: nextBlockInnerHash,
+		PrevBlockHash:      IntoCryptoHash(j.PrevBlockHash),
+		NextBlockInnerHash: IntoCryptoHash(j.NextBlockInnerHash),
 		InnerLite:          j.InnerLite.IntoBlockHeaderInnerLiteView(),
-		InnerRestHash:      innerRestHash,
+		InnerRestHash:      IntoCryptoHash(j.InnerRestHash),
 		NextBps:            nextBps,
 		ApprovalsAfterNext: approvalsAfterNext,
 	}, err
 }
 
 func (j *BlockHeaderInnerLiteViewJson) IntoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
-
-	var epochId, nextEpochId, prevStateRoot, outcomeRoot, nextBpHash, blockMerkleRoot [32]byte
-	copy(epochId[:], base58.Decode(j.EpochId))
-	copy(nextEpochId[:], base58.Decode(j.NextEpochId))
-	copy(prevStateRoot[:], base58.Decode(j.PrevStateRoot))
-	copy(outcomeRoot[:], base58.Decode(j.OutcomeRoot))
-	copy(nextBpHash[:], base58.Decode(j.NextBpHash))
-	copy(blockMerkleRoot[:], base58.Decode(j.BlockMerkleRoot))
-
 	return BlockHeaderInnerLiteView{
 		Height:          j.Height,
-		EpochId:         epochId,
-		NextEpochId:     nextEpochId,
-		PrevStateRoot:   prevStateRoot,
-		OutcomeRoot:     outcomeRoot,
+		EpochId:         IntoCryptoHash(j.EpochId),
+		NextEpochId:     IntoCryptoHash(j.NextEpochId),
+		PrevStateRoot:   IntoCryptoHash(j.PrevStateRoot),
+		OutcomeRoot:     IntoCryptoHash(j.OutcomeRoot),
 		Timestamp:       j.Timestamp,
-		NextBpHash:      nextBpHash,
-		BlockMerkleRoot: blockMerkleRoot,
+		NextBpHash:      IntoCryptoHash(j.NextBpHash),
+		BlockMerkleRoot: IntoCryptoHash(j.BlockMerkleRoot),
 	}
 }
 
@@ -158,4 +148,83 @@ func unmarshallPublicKey(serializedData string) (*PublicKey, error) {
 			Inner: publicKeyData,
 		},
 	}, nil
+}
+func (mpi *MerklePathItemJson) IntoMerklePathItem() *MerklePathItem {
+	var hash [32]byte
+	copy(hash[:], mpi.Hash)
+	var direction Direction
+	if strings.ToLower(mpi.Direction) == "left" {
+		direction = Left
+	} else {
+		direction = Right
+	}
+
+	return &MerklePathItem{
+		Direction: direction,
+		Hash:      hash,
+	}
+}
+func (op *ExecutionOutcomeWithIdViewJson) IntoExecutionOutcomeWithIdView() *ExecutionOutcomeWithIdView {
+	var blockHash, id [32]byte
+	copy(blockHash[:], base58.Decode(op.BlockHash))
+	copy(blockHash[:], base58.Decode(op.Id))
+
+	proof := make([]MerklePathItem, len(op.Proof))
+	for i := range op.Proof {
+		proof[i] = *op.Proof[i].IntoMerklePathItem()
+	}
+
+	return &ExecutionOutcomeWithIdView{
+		Proof:     proof,
+		BlockHash: blockHash,
+		Id:        id,
+		Outcome:   *op.Outcome.IntoExecutionOutcomeView(),
+	}
+}
+
+func (lcb *LightClientBlockLiteViewJson) IntoLightClientBlockView() *LightClientBlockLiteView {
+	var prevBlockHash, innerRestHash CryptoHash
+	copy(prevBlockHash[:], base58.Decode(lcb.PrevBlockHash))
+	copy(innerRestHash[:], base58.Decode(lcb.InnerRestHash))
+
+	return &LightClientBlockLiteView{
+		PrevBlockHash: prevBlockHash,
+		InnerRestHash: innerRestHash,
+		InnerLite:     lcb.InnerLite.IntoBlockHeaderInnerLiteView(),
+	}
+}
+
+func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionProofResponse() *RpcLightClientExecutionProofResponse {
+	blockProof := make([]MerklePathItem, len(ep.BlockProof))
+	for i := range ep.BlockProof {
+		blockProof[i] = *ep.BlockProof[i].IntoMerklePathItem()
+	}
+	outcomeRootProof := make([]MerklePathItem, len(ep.OutcomeRootProof))
+	for i := range ep.OutcomeRootProof {
+		outcomeRootProof[i] = *ep.OutcomeRootProof[i].IntoMerklePathItem()
+	}
+
+	return &RpcLightClientExecutionProofResponse{
+		OutcomeProof:     *ep.OutcomeProof.IntoExecutionOutcomeWithIdView(),
+		OutcomeRootProof: outcomeRootProof,
+		BlockHeaderLite:  *ep.BlockHeaderLite.IntoLightClientBlockView(),
+		BlockProof:       blockProof,
+	}
+}
+
+func (eo *ExecutionOutcomeViewJson) IntoExecutionOutcomeView() *ExecutionOutcomeView {
+	receiptIds := make([]CryptoHash, len(eo.ReceiptIds))
+	for i, ri := range eo.ReceiptIds {
+		receiptIds[i] = IntoCryptoHash(ri)
+	}
+	var tokensBurnt big.Int
+	tokensBurnt.SetString(eo.TokensBurnt, 10)
+	return &ExecutionOutcomeView{
+		Logs:        eo.Logs,
+		ReceiptIds:  receiptIds,
+		GasBurnt:    0,
+		TokensBurnt: tokensBurnt,
+		ExecutorId:  eo.ExecutorId,
+		Status:      []byte(eo.Status),
+	}
 }
