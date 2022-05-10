@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use crate::{
     block_validation::{validate_light_block, Digest},
     merkle_tree::compute_root_from_path,
@@ -10,24 +11,31 @@ use crate::{
 use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
-pub trait StateTransitionVerificator: StateStorage {
-    type D: Digest;
+// a struct, impls method. NearStateTransitionVerifier<T: StateStorage + CrytoOps>::verify(blocks);
+// todo: struct LightClientState
 
+trait CryptoOps {}
+
+struct NearStateTransitionVerifier<T: StateStorage + CrytoOps>(PhantomData<T>);
+
+impl<T: StateStorage + CrytoOps> NearStateTransitionVerifier<T> {
     fn validate_and_update_head(
         &mut self,
         block_view: &LightClientBlockView,
     ) -> LiteClientResult<bool> {
-        let head = self.get_head();
-        let epoch_block_producers = self.get_epoch_block_producers();
-        if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {
+        let head = T::get_head();
+        let epoch_block_producers = T::get_epoch_block_producers();
+        if !validate_light_block::<T>(head, block_view, epoch_block_producers)? {
             return Ok(false);
         }
-        self.insert_epoch_block_producers(
+        // shouldn't we check? head.next_epoch_id == block_view.epoch_id
+        // unneccessary storage op
+        T::insert_epoch_block_producers(
             block_view.inner_lite.next_epoch_id,
             block_view.next_bps.as_ref().unwrap().clone(),
         );
 
-        self.set_new_head(block_view.clone());
+        T::set_new_head(block_view.clone());
 
         #[cfg(test)]
         log::info!(
@@ -36,28 +44,6 @@ pub trait StateTransitionVerificator: StateStorage {
         );
 
         Ok(true)
-    }
-
-    fn validate_transaction(
-        &self,
-        outcome_proof: &OutcomeProof,
-        outcome_root_proof: MerklePath,
-        expected_block_outcome_root: CryptoHash,
-    ) -> LiteClientResult<bool> {
-        let execution_outcome_hash =
-            calculate_execution_outcome_hash::<Self::D>(&outcome_proof.outcome, outcome_proof.id);
-        let shard_outcome_root =
-            compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
-
-        let block_outcome_root = compute_root_from_path::<Self::D>(
-            &outcome_root_proof.0,
-            Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
-                .as_slice()
-                .try_into()
-                .unwrap(),
-        )?;
-
-        Ok(expected_block_outcome_root == block_outcome_root)
     }
 }
 
@@ -97,11 +83,11 @@ fn calculate_execution_outcome_hash<D: Digest>(
             tx_hash.as_ref(),
             &pack_merklelization_hashes,
         ]
-        .concat(),
+            .concat(),
     )
-    .as_slice()
-    .try_into()
-    .unwrap()
+        .as_slice()
+        .try_into()
+        .unwrap()
 }
 
 fn calculate_merklelization_hashes<D: Digest>(
@@ -114,7 +100,7 @@ fn calculate_merklelization_hashes<D: Digest>(
         execution_outcome.executor_id.try_to_vec().unwrap(),
         execution_outcome.status.to_vec(), // This one comes already serialized (to make our lives simpler -- TODO: validate whether there's any risk associated with this)
     ]
-    .concat();
+        .concat();
 
     let first_element_merkelization_hashes = D::digest(logs_payload).as_slice().try_into().unwrap();
     execution_outcome
@@ -125,6 +111,7 @@ fn calculate_merklelization_hashes<D: Digest>(
             acc
         })
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -148,10 +135,12 @@ mod test {
     use sp_core::ed25519::Signature as Ed25519Signature;
 
     use std::{collections::BTreeMap, io};
+
     #[derive(Debug, serde::Deserialize)]
     struct ResultFromRpc {
         pub result: NearLightClientBlockView,
     }
+
     impl From<NearCryptoHash> for CryptoHash {
         fn from(hash: NearCryptoHash) -> Self {
             Self(hash.0)
@@ -254,7 +243,7 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
 
         let expected_execution_outcome_hash =
             bs58::decode("8QtUAFNktUqLp9fg9ohp5PAHjemxMcG6ryW2z5DcUK6C")
@@ -276,7 +265,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Left,
             },
             MerklePathItem {
@@ -286,7 +275,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Left,
             },
         ];
@@ -296,14 +285,14 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
         let expected_block_outcome_root = CryptoHash::try_from(
             bs58::decode("AZYywqmo6vXvhPdVyuotmoEDgNb2tQzh2A1kV5f4Mxmq")
                 .into_vec()
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(
             expected_block_outcome_root,
@@ -349,7 +338,7 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
         let outcome_proof_proot = vec![
             MerklePathItem {
                 hash: CryptoHash::try_from(
@@ -358,7 +347,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Right,
             },
             MerklePathItem {
@@ -368,7 +357,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Right,
             },
             MerklePathItem {
@@ -378,7 +367,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Right,
             },
         ];
@@ -391,7 +380,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Left,
             },
             MerklePathItem {
@@ -401,7 +390,7 @@ mod test {
                         .unwrap()
                         .as_ref(),
                 )
-                .unwrap(),
+                    .unwrap(),
                 direction: crate::types::Direction::Left,
             },
         ];
@@ -435,7 +424,7 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
         let dummy_lite_client = VeryDummyLiteClient {};
         assert!(dummy_lite_client
             .validate_transaction(
@@ -464,8 +453,8 @@ mod test {
                         checkpoint_head.inner_lite.next_epoch_id,
                         next_bps,
                     )]
-                    .into_iter()
-                    .collect(),
+                        .into_iter()
+                        .collect(),
                 }
             }
         }
@@ -2013,13 +2002,13 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
 
         let near_client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
         let client_block_view = LightClientBlockView::try_from_slice(
             near_client_block_view.try_to_vec().unwrap().as_ref(),
         )
-        .unwrap();
+            .unwrap();
         let near_client_block_view_next_epoch =
             get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
 
@@ -2029,7 +2018,7 @@ mod test {
                 .unwrap()
                 .as_ref(),
         )
-        .unwrap();
+            .unwrap();
 
         let mut light_client =
             LessDummyLiteClient::new_from_checkpoint(client_block_view_checkpoint);

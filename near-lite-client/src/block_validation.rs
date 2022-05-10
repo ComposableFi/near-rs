@@ -35,21 +35,21 @@ pub fn validate_light_block<D: Digest>(
 
     // (1)
     if block_view.inner_lite.height <= head.inner_lite.height {
-        return Ok(false);
+        return Ok(false); // Error type
     }
 
-    // (2)
+    // (2) epoch checks
     if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
         .contains(&block_view.inner_lite.epoch_id)
     {
-        return Ok(false);
+        return Ok(false); // Error type
     }
 
-    // (3)
+    // (3) validator set checks
     if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id
         && block_view.next_bps.is_none()
     {
-        return Ok(false);
+        return Ok(false); // Error type
     }
 
     //  (4) and (5)
@@ -79,13 +79,13 @@ pub fn validate_light_block<D: Digest>(
             .unwrap()
             .verify(&approval_message, validator_public_key.clone())
         {
-            return Ok(false);
+            return Ok(false); // Error type
         }
     }
 
     let threshold = total_stake * 2 / 3;
     if approved_stake <= threshold {
-        return Ok(false);
+        return Ok(false); // Error type
     }
 
     // # (6)
@@ -95,7 +95,7 @@ pub fn validate_light_block<D: Digest>(
         if D::digest(block_view_next_bps_serialized).as_slice()
             != block_view.inner_lite.next_bp_hash.as_ref()
         {
-            return Ok(false);
+            return Ok(false); // Error type
         }
     }
     Ok(true)

@@ -12,9 +12,10 @@ use crate::{
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
 #[allow(dead_code)]
+
 pub struct LightClient {
     /// how many epochs the light client will track
-    relevant_epochs: usize,
+    block_view: LightClientBlockView,
 
     state_storage: DummyStateStorage,
 }
