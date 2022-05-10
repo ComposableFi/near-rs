@@ -137,6 +137,27 @@ type LightClientBlockLiteView struct {
 	InnerRestHash CryptoHash
 	InnerLite     BlockHeaderInnerLiteView
 }
+
+type Unknown struct{}
+type SuccessValue struct {
+	Inner string
+}
+type SuccessReceiptId struct {
+	Inner CryptoHash
+}
+
+type ExecutionStatusView struct {
+	Enum borsh.Enum `borsh_enum:"true"`
+	/// The execution is pending or unknown.
+	Unknown Unknown
+	/// The execution has failed.
+	Failure []byte
+	/// The final action succeeded and returned some value or an empty vec encoded in base64.
+	SuccessValue SuccessValue
+	/// The final action of the receipt returned a promise or the signed transaction was converted
+	/// to a receipt. Contains the receipt_id of the generated receipt.
+	SuccessReceiptId SuccessReceiptId
+}
 type ExecutionOutcomeViewJson struct {
 	Logs        []string           `json:"logs"`
 	ReceiptIds  []Base58CryptoHash `json:"receipt_ids"`

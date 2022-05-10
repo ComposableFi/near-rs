@@ -165,3 +165,122 @@ func nextBlockHash(nextBlockInnerHash, currentBlockHash types.CryptoHash) (*type
 	copy(result[:], serializedHash)
 	return &result, nil
 }
+
+func calculateMerklelizationHashes(executionOutcome *types.ExecutionOutcomeView) ([]types.CryptoHash, error) {
+	receiptIds, err := borsh.Serialize(executionOutcome.ReceiptIds)
+	if err != nil {
+		return nil, err
+	}
+
+	gasBurnt, err := borsh.Serialize(executionOutcome.GasBurnt)
+	if err != nil {
+		return nil, err
+	}
+
+	tokensBurnt, err := borsh.Serialize(executionOutcome.TokensBurnt)
+	if err != nil {
+		return nil, err
+	}
+
+	executorId, err := borsh.Serialize(executionOutcome.ExecutorId)
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := borsh.Serialize(executionOutcome.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("RECEIPT ", receiptIds)
+	log.Println(gasBurnt)
+	log.Println(tokensBurnt)
+	log.Println(executorId)
+	log.Println(status)
+	var logsPayload []byte
+	logsPayload = append(receiptIds, gasBurnt...)
+	logsPayload = append(logsPayload, tokensBurnt...)
+	logsPayload = append(logsPayload, executorId...)
+	logsPayload = append(logsPayload, status...)
+
+	// log.Println(logsPayload)
+	t := sha256.Sum256(logsPayload)
+	log.Println("first merklelizatoin " + base58.Encode(t[:]))
+	merklelizationHashes := []types.CryptoHash{sha256.Sum256(logsPayload)}
+	for _, log := range executionOutcome.Logs {
+		merklelizationHashes = append(merklelizationHashes, sha256.Sum256([]byte(log)))
+	}
+
+	return merklelizationHashes, nil
+}
+
+func calculateExecutionOutcomeHash(executionOutcome *types.ExecutionOutcomeView, txHash types.CryptoHash) (*types.CryptoHash, error) {
+	merkelizationHashes, err := calculateMerklelizationHashes(executionOutcome)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("merkelizationHashes ", merkelizationHashes)
+
+	var packMerklelizationHashes []byte
+	for _, mh := range merkelizationHashes {
+		packMerklelizationHashes = append(packMerklelizationHashes, mh[:]...)
+	}
+
+	var inner []byte
+	var b [4]byte
+	binary.LittleEndian.PutUint32(b[:], uint32(len(packMerklelizationHashes)+1))
+	inner = append(inner, b[:]...)
+	inner = append(inner, txHash[:]...)
+	inner = append(inner, packMerklelizationHashes...)
+
+	result := sha256.Sum256(inner)
+	return &result, nil
+}
+
+func computeRootFromPath(path types.MerklePath, itemHash types.MerkleHash) (types.MerkleHash, error) {
+	res := itemHash
+	for _, item := range path {
+		switch item.Direction {
+		case types.Left:
+			r, err := combineHash(item.Hash, res)
+			if err != nil {
+				return types.MerkleHash{}, err
+			}
+			res = r
+		case types.Right:
+			r, err := combineHash(res, item.Hash)
+			if err != nil {
+				return types.MerkleHash{}, err
+			}
+			res = r
+
+		}
+	}
+	return res, nil
+}
+
+func combineHash(hashOne, hashTwo types.MerkleHash) (types.CryptoHash, error) {
+
+	hashes := []types.CryptoHash{hashOne, hashTwo}
+	hashesSerialized, err := borsh.Serialize(hashes)
+	if err != nil {
+		return types.CryptoHash{}, err
+	}
+	return sha256.Sum256(hashesSerialized), nil
+
+}
+
+// pub fn compute_root_from_path(path: &MerklePath, item_hash: MerkleHash) -> MerkleHash {
+//     let mut res = item_hash;
+//     for item in path {
+//         match item.direction {
+//             Direction::Left => {
+//                 res = combine_hash(&item.hash, &res);
+//             }
+//             Direction::Right => {
+//                 res = combine_hash(&res, &item.hash);
+//             }
+//         }
+//     }
+//     res
+// }

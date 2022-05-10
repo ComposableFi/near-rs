@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"math/big"
 	"strings"
 
@@ -167,7 +168,7 @@ func (mpi *MerklePathItemJson) IntoMerklePathItem() *MerklePathItem {
 func (op *ExecutionOutcomeWithIdViewJson) IntoExecutionOutcomeWithIdView() *ExecutionOutcomeWithIdView {
 	var blockHash, id [32]byte
 	copy(blockHash[:], base58.Decode(op.BlockHash))
-	copy(blockHash[:], base58.Decode(op.Id))
+	copy(id[:], base58.Decode(op.Id))
 
 	proof := make([]MerklePathItem, len(op.Proof))
 	for i := range op.Proof {
@@ -217,12 +218,14 @@ func (eo *ExecutionOutcomeViewJson) IntoExecutionOutcomeView() *ExecutionOutcome
 	for i, ri := range eo.ReceiptIds {
 		receiptIds[i] = IntoCryptoHash(ri)
 	}
+
+	log.Println(string(eo.Status))
 	var tokensBurnt big.Int
 	tokensBurnt.SetString(eo.TokensBurnt, 10)
 	return &ExecutionOutcomeView{
 		Logs:        eo.Logs,
 		ReceiptIds:  receiptIds,
-		GasBurnt:    0,
+		GasBurnt:    eo.GasBurnt,
 		TokensBurnt: tokensBurnt,
 		ExecutorId:  eo.ExecutorId,
 		Status:      []byte(eo.Status),

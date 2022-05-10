@@ -1,6 +1,7 @@
 package lite_client
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"log"
 	"testing"
@@ -2260,4 +2261,29 @@ func getRpcLightClientExecutionProofResponse(payload []byte) *types.RpcLightClie
 func TestSerializeRpcLightClientExecutionProofResponse(t *testing.T) {
 	response := getRpcLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
 	assert.Equal(t, base58.Encode(response.OutcomeProof.Outcome.ReceiptIds[0][:]), "8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK")
+}
+
+func TestValidateTransaction(t *testing.T) {
+	parsedResponse := getRpcLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
+	assert.Equal(t, base58.Encode(parsedResponse.BlockHeaderLite.InnerLite.BlockMerkleRoot[:]), "D5nnsEuJ2WA4Fua4QJWXa3LF2TGoAqhrW8fctFh7MW2s")
+	executionOutcomeHash, err := calculateExecutionOutcomeHash(&parsedResponse.OutcomeProof.Outcome, parsedResponse.OutcomeProof.Id)
+	// log.Println(base58.Encode(parsedResponse.OutcomeProof.Id[:]))
+	// log.Println(base58.Encode(executionOutcomeHash[:]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	shardOutcomeRoot, err := computeRootFromPath(parsedResponse.OutcomeProof.Proof, *executionOutcomeHash)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// log.Println(base58.Encode(shardOutcomeRoot[:]))
+
+	blockOutcomeRoot, err := computeRootFromPath(parsedResponse.OutcomeRootProof, sha256.Sum256(shardOutcomeRoot[:]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// log.Println(base58.Encode(blockOutcomeRoot[:]))
+
+	assert.Equal(t, "AZYywqmo6vXvhPdVyuotmoEDgNb2tQzh2A1kV5f4Mxmq", base58.Encode(blockOutcomeRoot[:]))
+
 }

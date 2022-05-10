@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"log"
@@ -33,4 +34,13 @@ func TestPublicKeySerialization(t *testing.T) {
 	}
 	assert.Equal(t, pubKeyB58, base58.Encode(pkDeserialized.ED25519.Inner[:]))
 	assert.Equal(t, pkDeserialized.Enum, borsh.Enum(0))
+}
+
+func TestSha256(t *testing.T) {
+	s := sha256.Sum256([]byte{1, 2, 3})
+	ss, err := borsh.Serialize(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	assert.Equal(t, s[:], ss)
 }
