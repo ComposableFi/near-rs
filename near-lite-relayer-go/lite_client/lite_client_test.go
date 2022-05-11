@@ -3,6 +3,7 @@ package lite_client
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"github.com/stretchr/testify/require"
 	"log"
 	"testing"
 
@@ -509,66 +510,57 @@ const PAYLOAD string = `{
 	"id": "idontcare"
 }`
 
-func getLightClientBlockView(blockViewString string) (*types.LightClientBlockView, error) {
+func getLightClientBlockView(t *testing.T, blockViewString string) (*types.LightClientBlockView, error) {
 	type response struct {
 		Result types.LightClientBlockViewJson `json:"result"`
 	}
 
 	var r response
 	err := json.Unmarshal([]byte(blockViewString), &r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	return r.Result.IntoLightClientBlockView()
 }
 
 func TestCalculateCurrentBlockHahs(t *testing.T) {
-	lightClientBLockView, err := getLightClientBlockView(PAYLOAD)
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockView, err := getLightClientBlockView(t, PAYLOAD)
+	require.Nil(t, err)
+
 	currentBlockHash, err := currentBlockHash(lightClientBLockView)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, base58.Encode(currentBlockHash[:]), "DixB3qV9kRwPDWMKTuhBLM67QgW7bpJ6M5hrZr79kC8F")
 
 }
 
 func TestNextBlockHash(t *testing.T) {
-	lightClientBLockView, err := getLightClientBlockView(PAYLOAD)
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockView, err := getLightClientBlockView(t, PAYLOAD)
+	require.Nil(t, err)
+
 	currentBlockHash, err := currentBlockHash(lightClientBLockView)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	nextBlockHash, err := nextBlockHash(lightClientBLockView.NextBlockInnerHash, *currentBlockHash)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, base58.Encode(nextBlockHash[:]), "HNfD1Kex1awMexrsjCUa8bUrykMecGUpysLv5dBTj5pK")
 }
 
 func TestApprovalMessage(t *testing.T) {
 
-	lightClientBLockView, err := getLightClientBlockView(PAYLOAD)
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockView, err := getLightClientBlockView(t, PAYLOAD)
+	require.Nil(t, err)
+
 	_, _, approvalMessage, err := reconstrunctLightClientBlockViewFields(lightClientBLockView)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, base58.Encode(approvalMessage), "1D66k83oBABk1APcAcLQ1PAbXNixddhUJxhqWuGwTe8hLoxwsu8FJtgP")
 }
 
 func TestValidatorStakeViewSerialization(t *testing.T) {
-	lightClientBLockViewPreviousBlock, err := getLightClientBlockView(CLIENT_RESPONSE_PREVIOUS_EPOCH)
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockViewPreviousBlock, err := getLightClientBlockView(t, CLIENT_RESPONSE_PREVIOUS_EPOCH)
+	require.Nil(t, err)
+
 	blockProducer := lightClientBLockViewPreviousBlock.NextBps[0]
 	assert.Equal(t, "node1", blockProducer.V1.AccountId)
 	assert.Equal(t, "ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su", base58.Encode(blockProducer.V1.PublicKey.ED25519.Inner[:]))
@@ -2081,39 +2073,30 @@ const CLIENT_BLOCK_RESPONSE_NEXT_BLOCK = `
 }`
 
 func TestValidateAndUpdateHeadValidBlockNextEpoch(t *testing.T) {
-	lightClientBLockViewPreviousEpoch, err := getLightClientBlockView(CLIENT_RESPONSE_PREVIOUS_EPOCH)
-	if err != nil {
-		log.Fatal(err)
-	}
-	lightClientBLockViewCurrentEpoch, err := getLightClientBlockView(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK)
+	lightClientBLockViewPreviousEpoch, err := getLightClientBlockView(t, CLIENT_RESPONSE_PREVIOUS_EPOCH)
+	require.Nil(t, err)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockViewCurrentEpoch, err := getLightClientBlockView(t, CLIENT_BLOCK_RESPONSE_NEXT_BLOCK)
+	require.Nil(t, err)
+
 	liteClient := NewLiteClientFromCheckpoint(*lightClientBLockViewPreviousEpoch)
 	result, err := liteClient.ValidateAndUpdateHead(lightClientBLockViewCurrentEpoch)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	assert.True(t, result)
 }
 
 func TestValidateAndUpdateHeadValidBlockPreviousEpoch(t *testing.T) {
-	lightClientBLockViewPreviousEpoch, err := getLightClientBlockView(CLIENT_RESPONSE_PREVIOUS_EPOCH)
-	if err != nil {
-		log.Fatal(err)
-	}
-	lightClientBLockViewCurrentEpoch, err := getLightClientBlockView(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK)
+	lightClientBLockViewPreviousEpoch, err := getLightClientBlockView(t, CLIENT_RESPONSE_PREVIOUS_EPOCH)
+	require.Nil(t, err)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	lightClientBLockViewCurrentEpoch, err := getLightClientBlockView(t, CLIENT_BLOCK_RESPONSE_NEXT_BLOCK)
+	require.Nil(t, err)
+
 	liteClient := NewLiteClientFromCheckpoint(*lightClientBLockViewCurrentEpoch)
 	result, err := liteClient.ValidateAndUpdateHead(lightClientBLockViewPreviousEpoch)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.False(t, result)
 }
 
@@ -2272,17 +2255,14 @@ func TestValidateTransaction(t *testing.T) {
 	parsedResponse := getRpcLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
 	assert.Equal(t, base58.Encode(parsedResponse.BlockHeaderLite.InnerLite.BlockMerkleRoot[:]), "D5nnsEuJ2WA4Fua4QJWXa3LF2TGoAqhrW8fctFh7MW2s")
 	executionOutcomeHash, err := calculateExecutionOutcomeHash(&parsedResponse.OutcomeProof.Outcome, parsedResponse.OutcomeProof.Id)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	shardOutcomeRoot, err := computeRootFromPath(parsedResponse.OutcomeProof.Proof, *executionOutcomeHash)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	blockOutcomeRoot, err := computeRootFromPath(parsedResponse.OutcomeRootProof, sha256.Sum256(shardOutcomeRoot[:]))
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, "AZYywqmo6vXvhPdVyuotmoEDgNb2tQzh2A1kV5f4Mxmq", base58.Encode(blockOutcomeRoot[:]))
 
 }

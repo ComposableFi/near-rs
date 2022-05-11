@@ -1,6 +1,6 @@
 module github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go
 
-go 1.18
+go 1.17
 
 require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d

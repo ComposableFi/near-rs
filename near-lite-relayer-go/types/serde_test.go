@@ -1,7 +1,7 @@
 package types
 
 import (
-	"log"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/near/borsh-go"
@@ -17,13 +17,11 @@ func TestDirection(t *testing.T) {
 	l := Left
 	r := Right
 	data, err := borsh.Serialize(l)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, []byte{0}, data)
 	data, err = borsh.Serialize(r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, []byte{1}, data)
 }

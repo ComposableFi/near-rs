@@ -2,7 +2,7 @@ package blockchain_connector
 
 import (
 	"encoding/json"
-	"log"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
@@ -23,9 +23,7 @@ func TestGetLightClientBlockView(t *testing.T) {
 	// go to the archive testnet to ensure that the block is present
 	blockchainConnector := NewBlockchainConnector(ArchiveTestnet)
 	_, err := blockchainConnector.GetLightClientBlockView("9exTJWj5ESCBG93Brc5qHyr7twLNaNaEWwNaj2ieVAEL")
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
 }
 
 func TestUnmarshalLightClientBlockView(t *testing.T) {
@@ -552,10 +550,11 @@ func TestUnmarshalLightClientBlockView(t *testing.T) {
 
 	var r response
 	err := json.Unmarshal([]byte(payload), &r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	lightClientBLockView, err := r.Result.IntoLightClientBlockView()
+	require.Nil(t, err)
+
 	assert.Equal(t,
 		"4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc",
 		base58.Encode(lightClientBLockView.ApprovalsAfterNext[0].ED25519[:]),
@@ -583,8 +582,7 @@ func TestUnmarshalLightClientBlockViewInnerLite(t *testing.T) {
 
 	var r result
 	err := json.Unmarshal([]byte(payload), &r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, "Ad5SqwwdfwdynaXtuzoSzMgjm6m9oZPbxeQf442hP2G2", r.InnerLite.EpochId)
 }

@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 
@@ -19,13 +20,11 @@ func TestIntoNextValidatorStakeViews(t *testing.T) {
 
 	var r json.RawMessage
 	err := json.Unmarshal([]byte(payload), &r)
-	if err != nil {
-		panic(err)
-	}
-	result, err := IntoNextValidatorStakeViews([]json.RawMessage{r})
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
+
+	result, err := intoNextValidatorStakeViews([]json.RawMessage{r})
+	require.Nil(t, err)
+
 	assert.Equal(t, result[0].V1.AccountId, "node1")
 	assert.Equal(t, result[0].V1.PublicKey.ED25519.Inner[:], base58.Decode("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su"))
 	b := big.Int{}
@@ -44,13 +43,11 @@ func TestIntoIntoSignatures(t *testing.T) {
 
 	var response []*json.RawMessage
 	err := json.Unmarshal(payload, &response)
-	if err != nil {
-		panic(err)
-	}
-	signatures, err := IntoSignatures(response)
-	if err != nil {
-		panic(err)
-	}
+	require.Nil(t, err)
+
+	signatures, err := intoSignatures(response)
+	require.Nil(t, err)
+
 	var s [64]byte
 	copy(s[:], base58.Decode("4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc"))
 	assert.Nil(t, signatures[0])
