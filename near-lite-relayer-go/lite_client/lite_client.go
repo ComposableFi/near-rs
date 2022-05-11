@@ -101,7 +101,6 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 			return false, err
 		}
 		if sha256.Sum256(serializedNextBps) != blockView.InnerLite.NextBpHash {
-			log.Println("ASD222223332")
 			return false, nil
 		}
 	}
@@ -192,20 +191,12 @@ func calculateMerklelizationHashes(executionOutcome *types.ExecutionOutcomeView)
 		return nil, err
 	}
 
-	log.Println("RECEIPT ", receiptIds)
-	log.Println(gasBurnt)
-	log.Println(tokensBurnt)
-	log.Println(executorId)
-	log.Println(status)
 	var logsPayload []byte
 	logsPayload = append(receiptIds, gasBurnt...)
 	logsPayload = append(logsPayload, tokensBurnt...)
 	logsPayload = append(logsPayload, executorId...)
 	logsPayload = append(logsPayload, status...)
 
-	// log.Println(logsPayload)
-	t := sha256.Sum256(logsPayload)
-	log.Println("first merklelizatoin " + base58.Encode(t[:]))
 	merklelizationHashes := []types.CryptoHash{sha256.Sum256(logsPayload)}
 	for _, log := range executionOutcome.Logs {
 		merklelizationHashes = append(merklelizationHashes, sha256.Sum256([]byte(log)))
@@ -219,7 +210,6 @@ func calculateExecutionOutcomeHash(executionOutcome *types.ExecutionOutcomeView,
 	if err != nil {
 		return nil, err
 	}
-	log.Println("merkelizationHashes ", merkelizationHashes)
 
 	var packMerklelizationHashes []byte
 	for _, mh := range merkelizationHashes {
@@ -228,7 +218,7 @@ func calculateExecutionOutcomeHash(executionOutcome *types.ExecutionOutcomeView,
 
 	var inner []byte
 	var b [4]byte
-	binary.LittleEndian.PutUint32(b[:], uint32(len(packMerklelizationHashes)+1))
+	binary.LittleEndian.PutUint32(b[:], uint32(len(merkelizationHashes)+1))
 	inner = append(inner, b[:]...)
 	inner = append(inner, txHash[:]...)
 	inner = append(inner, packMerklelizationHashes...)
@@ -261,7 +251,7 @@ func computeRootFromPath(path types.MerklePath, itemHash types.MerkleHash) (type
 
 func combineHash(hashOne, hashTwo types.MerkleHash) (types.CryptoHash, error) {
 
-	hashes := []types.CryptoHash{hashOne, hashTwo}
+	hashes := [2]types.CryptoHash{hashOne, hashTwo}
 	hashesSerialized, err := borsh.Serialize(hashes)
 	if err != nil {
 		return types.CryptoHash{}, err

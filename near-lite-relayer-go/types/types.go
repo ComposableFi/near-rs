@@ -159,13 +159,14 @@ type ExecutionStatusView struct {
 	SuccessReceiptId SuccessReceiptId
 }
 type ExecutionOutcomeViewJson struct {
-	Logs        []string           `json:"logs"`
-	ReceiptIds  []Base58CryptoHash `json:"receipt_ids"`
-	GasBurnt    Gas                `json:"gas_burnt"`
-	TokensBurnt string             `json:"tokens_burnt"`
-	ExecutorId  AccountId          `json:"executor_id"`
-	Status      json.RawMessage    `json:"status"`
+	Logs        []string                   `json:"logs"`
+	ReceiptIds  []Base58CryptoHash         `json:"receipt_ids"`
+	GasBurnt    Gas                        `json:"gas_burnt"`
+	TokensBurnt string                     `json:"tokens_burnt"`
+	ExecutorId  AccountId                  `json:"executor_id"`
+	Status      map[string]json.RawMessage `json:"status"`
 }
+
 type ExecutionOutcomeView struct {
 	/// Logs from this transaction or receipt.
 	Logs []string
@@ -181,7 +182,7 @@ type ExecutionOutcomeView struct {
 	/// for receipt this is receiver_id.
 	ExecutorId AccountId
 	/// Execution status. Contains the result in case of successful execution.
-	Status []byte // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary struct
+	Status ExecutionStatusView // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary struct
 }
 
 type ExecutionOutcomeWithIdViewJson struct {
