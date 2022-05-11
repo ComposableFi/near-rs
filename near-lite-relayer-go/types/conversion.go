@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 )
 
-func IntoCryptoHash(b Base58CryptoHash) CryptoHash {
+func intoCryptoHash(b Base58CryptoHash) CryptoHash {
 	var result CryptoHash
 	copy(result[:], base58.Decode(b))
 	return result
@@ -18,39 +18,39 @@ func IntoCryptoHash(b Base58CryptoHash) CryptoHash {
 
 func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlockView, error) {
 
-	nextBps, err := IntoNextValidatorStakeViews(j.NextBps)
+	nextBps, err := intoNextValidatorStakeViews(j.NextBps)
 	if err != nil {
 		return nil, err
 	}
-	approvalsAfterNext, err := IntoSignatures(j.ApprovalsAfterNext)
+	approvalsAfterNext, err := intoSignatures(j.ApprovalsAfterNext)
 	if err != nil {
 		return nil, err
 	}
 
 	return &LightClientBlockView{
-		PrevBlockHash:      IntoCryptoHash(j.PrevBlockHash),
-		NextBlockInnerHash: IntoCryptoHash(j.NextBlockInnerHash),
-		InnerLite:          j.InnerLite.IntoBlockHeaderInnerLiteView(),
-		InnerRestHash:      IntoCryptoHash(j.InnerRestHash),
+		PrevBlockHash:      intoCryptoHash(j.PrevBlockHash),
+		NextBlockInnerHash: intoCryptoHash(j.NextBlockInnerHash),
+		InnerLite:          j.InnerLite.intoBlockHeaderInnerLiteView(),
+		InnerRestHash:      intoCryptoHash(j.InnerRestHash),
 		NextBps:            nextBps,
 		ApprovalsAfterNext: approvalsAfterNext,
 	}, err
 }
 
-func (j *BlockHeaderInnerLiteViewJson) IntoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
+func (j *BlockHeaderInnerLiteViewJson) intoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
 	return BlockHeaderInnerLiteView{
 		Height:          j.Height,
-		EpochId:         IntoCryptoHash(j.EpochId),
-		NextEpochId:     IntoCryptoHash(j.NextEpochId),
-		PrevStateRoot:   IntoCryptoHash(j.PrevStateRoot),
-		OutcomeRoot:     IntoCryptoHash(j.OutcomeRoot),
+		EpochId:         intoCryptoHash(j.EpochId),
+		NextEpochId:     intoCryptoHash(j.NextEpochId),
+		PrevStateRoot:   intoCryptoHash(j.PrevStateRoot),
+		OutcomeRoot:     intoCryptoHash(j.OutcomeRoot),
 		Timestamp:       j.Timestamp,
-		NextBpHash:      IntoCryptoHash(j.NextBpHash),
-		BlockMerkleRoot: IntoCryptoHash(j.BlockMerkleRoot),
+		NextBpHash:      intoCryptoHash(j.NextBpHash),
+		BlockMerkleRoot: intoCryptoHash(j.BlockMerkleRoot),
 	}
 }
 
-func IntoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeView, error) {
+func intoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeView, error) {
 
 	type rawStruct struct {
 		AccountId                   string `json:"account_id"`
@@ -94,7 +94,7 @@ func IntoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeVie
 	return result, nil
 }
 
-func IntoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error) {
+func intoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error) {
 	// "ed25519:4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc"
 	knownPrefix := "ed25519:"
 	var result []*Signature
@@ -150,7 +150,7 @@ func unmarshallPublicKey(serializedData string) (*PublicKey, error) {
 		},
 	}, nil
 }
-func (mpi *MerklePathItemJson) IntoMerklePathItem() *MerklePathItem {
+func (mpi *MerklePathItemJson) intoMerklePathItem() *MerklePathItem {
 	var hash [32]byte
 	copy(hash[:], base58.Decode(mpi.Hash))
 	base58.Encode(hash[:])
@@ -166,17 +166,17 @@ func (mpi *MerklePathItemJson) IntoMerklePathItem() *MerklePathItem {
 		Hash:      hash,
 	}
 }
-func (op *ExecutionOutcomeWithIdViewJson) IntoExecutionOutcomeWithIdView() (*ExecutionOutcomeWithIdView, error) {
+func (op *ExecutionOutcomeWithIdViewJson) intoExecutionOutcomeWithIdView() (*ExecutionOutcomeWithIdView, error) {
 	var blockHash, id [32]byte
 	copy(blockHash[:], base58.Decode(op.BlockHash))
 	copy(id[:], base58.Decode(op.Id))
 
 	proof := make([]MerklePathItem, len(op.Proof))
 	for i := range op.Proof {
-		proof[i] = *op.Proof[i].IntoMerklePathItem()
+		proof[i] = *op.Proof[i].intoMerklePathItem()
 	}
 
-	outcome, err := op.Outcome.IntoExecutionOutcomeView()
+	outcome, err := op.Outcome.intoExecutionOutcomeView()
 	if err != nil {
 		return nil, err
 	}
@@ -197,21 +197,21 @@ func (lcb *LightClientBlockLiteViewJson) IntoLightClientBlockView() *LightClient
 	return &LightClientBlockLiteView{
 		PrevBlockHash: prevBlockHash,
 		InnerRestHash: innerRestHash,
-		InnerLite:     lcb.InnerLite.IntoBlockHeaderInnerLiteView(),
+		InnerLite:     lcb.InnerLite.intoBlockHeaderInnerLiteView(),
 	}
 }
 
 func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionProofResponse() (*RpcLightClientExecutionProofResponse, error) {
 	blockProof := make([]MerklePathItem, len(ep.BlockProof))
 	for i := range ep.BlockProof {
-		blockProof[i] = *ep.BlockProof[i].IntoMerklePathItem()
+		blockProof[i] = *ep.BlockProof[i].intoMerklePathItem()
 	}
 	outcomeRootProof := make([]MerklePathItem, len(ep.OutcomeRootProof))
 	for i := range ep.OutcomeRootProof {
-		outcomeRootProof[i] = *ep.OutcomeRootProof[i].IntoMerklePathItem()
+		outcomeRootProof[i] = *ep.OutcomeRootProof[i].intoMerklePathItem()
 	}
 
-	outcomeProof, err := ep.OutcomeProof.IntoExecutionOutcomeWithIdView()
+	outcomeProof, err := ep.OutcomeProof.intoExecutionOutcomeWithIdView()
 	if err != nil {
 		return nil, err
 	}
@@ -224,10 +224,10 @@ func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionP
 	}, nil
 }
 
-func (eo *ExecutionOutcomeViewJson) IntoExecutionOutcomeView() (*ExecutionOutcomeView, error) {
+func (eo *ExecutionOutcomeViewJson) intoExecutionOutcomeView() (*ExecutionOutcomeView, error) {
 	receiptIds := make([]CryptoHash, len(eo.ReceiptIds))
 	for i, ri := range eo.ReceiptIds {
-		receiptIds[i] = IntoCryptoHash(ri)
+		receiptIds[i] = intoCryptoHash(ri)
 	}
 	var status ExecutionStatusView
 	for k, v := range eo.Status {
@@ -254,7 +254,7 @@ func (eo *ExecutionOutcomeViewJson) IntoExecutionOutcomeView() (*ExecutionOutcom
 		case "SuccessReceiptId":
 			var s string
 			json.Unmarshal([]byte(v), &s)
-			cryptoHash := IntoCryptoHash(s)
+			cryptoHash := intoCryptoHash(s)
 			status = ExecutionStatusView{
 				Enum: 3,
 				SuccessReceiptId: SuccessReceiptId{
