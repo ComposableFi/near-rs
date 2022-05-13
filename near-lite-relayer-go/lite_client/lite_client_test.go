@@ -3,9 +3,10 @@ package lite_client
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"log"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
 	"github.com/btcsuite/btcutil/base58"
@@ -2195,7 +2196,7 @@ const CLIENT_PROOF_RESPONSE = `{
 					"8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK"
 				],
 				"status": {
-					"SuccessReceiptId": "8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK"
+					"SuccessReceiptID": "8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK"
 				},
 				"tokens_burnt": "242839501800800000000"
 			},
@@ -2228,9 +2229,9 @@ const CLIENT_PROOF_RESPONSE = `{
 	"id": "idontcare"
 }`
 
-func getRpcLightClientExecutionProofResponse(payload []byte) *types.RpcLightClientExecutionProofResponse {
+func getRPCLightClientExecutionProofResponse(payload []byte) *types.RPCLightClientExecutionProofResponse {
 	type result struct {
-		Result types.RpcLightClientExecutionProofResponseJson `json:"result"`
+		Result types.RPCLightClientExecutionProofResponseJSON `json:"result"`
 	}
 	var r result
 	err := json.Unmarshal(payload, &r)
@@ -2238,7 +2239,7 @@ func getRpcLightClientExecutionProofResponse(payload []byte) *types.RpcLightClie
 		log.Fatal(err)
 	}
 
-	result2, err := r.Result.IntoRpcLightClientExecutionProofResponse()
+	result2, err := r.Result.IntoRPCLightClientExecutionProofResponse()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -2246,15 +2247,15 @@ func getRpcLightClientExecutionProofResponse(payload []byte) *types.RpcLightClie
 	return result2
 }
 
-func TestSerializeRpcLightClientExecutionProofResponse(t *testing.T) {
-	response := getRpcLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
+func TestSerializeRPCLightClientExecutionProofResponse(t *testing.T) {
+	response := getRPCLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
 	assert.Equal(t, base58.Encode(response.OutcomeProof.Outcome.ReceiptIds[0][:]), "8hxkU4avDWFDCsZckig7oN2ypnYvLyb1qmZ3SA1t8iZK")
 }
 
 func TestValidateTransaction(t *testing.T) {
-	parsedResponse := getRpcLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
+	parsedResponse := getRPCLightClientExecutionProofResponse([]byte(CLIENT_PROOF_RESPONSE))
 	assert.Equal(t, base58.Encode(parsedResponse.BlockHeaderLite.InnerLite.BlockMerkleRoot[:]), "D5nnsEuJ2WA4Fua4QJWXa3LF2TGoAqhrW8fctFh7MW2s")
-	executionOutcomeHash, err := calculateExecutionOutcomeHash(&parsedResponse.OutcomeProof.Outcome, parsedResponse.OutcomeProof.Id)
+	executionOutcomeHash, err := calculateExecutionOutcomeHash(&parsedResponse.OutcomeProof.Outcome, parsedResponse.OutcomeProof.ID)
 	require.Nil(t, err)
 
 	shardOutcomeRoot, err := computeRootFromPath(parsedResponse.OutcomeProof.Proof, *executionOutcomeHash)

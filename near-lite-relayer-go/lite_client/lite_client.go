@@ -181,7 +181,7 @@ func calculateMerklelizationHashes(executionOutcome *types.ExecutionOutcomeView)
 		return nil, err
 	}
 
-	executorId, err := borsh.Serialize(executionOutcome.ExecutorId)
+	executorId, err := borsh.Serialize(executionOutcome.ExecutorID)
 	if err != nil {
 		return nil, err
 	}

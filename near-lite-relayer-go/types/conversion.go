@@ -166,10 +166,10 @@ func (mpi *MerklePathItemJson) intoMerklePathItem() *MerklePathItem {
 		Hash:      hash,
 	}
 }
-func (op *ExecutionOutcomeWithIdViewJson) intoExecutionOutcomeWithIdView() (*ExecutionOutcomeWithIdView, error) {
+func (op *ExecutionOutcomeWithIDViewJSON) intoExecutionOutcomeWithIDView() (*ExecutionOutcomeWithIDView, error) {
 	var blockHash, id [32]byte
 	copy(blockHash[:], base58.Decode(op.BlockHash))
-	copy(id[:], base58.Decode(op.Id))
+	copy(id[:], base58.Decode(op.ID))
 
 	proof := make([]MerklePathItem, len(op.Proof))
 	for i := range op.Proof {
@@ -181,10 +181,10 @@ func (op *ExecutionOutcomeWithIdViewJson) intoExecutionOutcomeWithIdView() (*Exe
 		return nil, err
 	}
 
-	return &ExecutionOutcomeWithIdView{
+	return &ExecutionOutcomeWithIDView{
 		Proof:     proof,
 		BlockHash: blockHash,
-		Id:        id,
+		ID:        id,
 		Outcome:   *outcome,
 	}, nil
 }
@@ -201,7 +201,7 @@ func (lcb *LightClientBlockLiteViewJson) IntoLightClientBlockView() *LightClient
 	}
 }
 
-func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionProofResponse() (*RpcLightClientExecutionProofResponse, error) {
+func (ep *RPCLightClientExecutionProofResponseJSON) IntoRPCLightClientExecutionProofResponse() (*RPCLightClientExecutionProofResponse, error) {
 	blockProof := make([]MerklePathItem, len(ep.BlockProof))
 	for i := range ep.BlockProof {
 		blockProof[i] = *ep.BlockProof[i].intoMerklePathItem()
@@ -211,12 +211,12 @@ func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionP
 		outcomeRootProof[i] = *ep.OutcomeRootProof[i].intoMerklePathItem()
 	}
 
-	outcomeProof, err := ep.OutcomeProof.intoExecutionOutcomeWithIdView()
+	outcomeProof, err := ep.OutcomeProof.intoExecutionOutcomeWithIDView()
 	if err != nil {
 		return nil, err
 	}
 
-	return &RpcLightClientExecutionProofResponse{
+	return &RPCLightClientExecutionProofResponse{
 		OutcomeProof:     *outcomeProof,
 		OutcomeRootProof: outcomeRootProof,
 		BlockHeaderLite:  *ep.BlockHeaderLite.IntoLightClientBlockView(),
@@ -224,7 +224,7 @@ func (ep *RpcLightClientExecutionProofResponseJson) IntoRpcLightClientExecutionP
 	}, nil
 }
 
-func (eo *ExecutionOutcomeViewJson) intoExecutionOutcomeView() (*ExecutionOutcomeView, error) {
+func (eo *ExecutionOutcomeViewJSON) intoExecutionOutcomeView() (*ExecutionOutcomeView, error) {
 	receiptIds := make([]CryptoHash, len(eo.ReceiptIds))
 	for i, ri := range eo.ReceiptIds {
 		receiptIds[i] = intoCryptoHash(ri)
@@ -241,7 +241,7 @@ func (eo *ExecutionOutcomeViewJson) intoExecutionOutcomeView() (*ExecutionOutcom
 			}
 		case "Failure":
 			log.Println("Unsupported failure transaction")
-			return nil, errors.New("Unsupported failure transaction")
+			return nil, errors.New("unsupported failure transaction")
 		case "SuccessValues":
 			var s string
 			json.Unmarshal([]byte(v), &s)
@@ -251,13 +251,13 @@ func (eo *ExecutionOutcomeViewJson) intoExecutionOutcomeView() (*ExecutionOutcom
 					Inner: s,
 				},
 			}
-		case "SuccessReceiptId":
+		case "SuccessReceiptID":
 			var s string
 			json.Unmarshal([]byte(v), &s)
 			cryptoHash := intoCryptoHash(s)
 			status = ExecutionStatusView{
 				Enum: 3,
-				SuccessReceiptId: SuccessReceiptId{
+				SuccessReceiptID: SuccessReceiptID{
 					Inner: cryptoHash,
 				},
 			}
@@ -273,7 +273,7 @@ func (eo *ExecutionOutcomeViewJson) intoExecutionOutcomeView() (*ExecutionOutcom
 		ReceiptIds:  receiptIds,
 		GasBurnt:    eo.GasBurnt,
 		TokensBurnt: tokensBurnt,
-		ExecutorId:  eo.ExecutorId,
+		ExecutorID:  eo.ExecutorID,
 		Status:      status,
 	}, nil
 }

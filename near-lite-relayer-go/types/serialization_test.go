@@ -2,8 +2,9 @@ package types
 
 import (
 	"crypto/sha256"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/near/borsh-go"

@@ -1,3 +1,4 @@
+// Package types defines the types that are used throughout the program
 package types
 
 import (
@@ -14,34 +15,46 @@ type Balance = big.Int // borsh maps u128 -> big.Int
 type BlockHeight = uint64
 type AccountId = string
 
-// for merkle tree
+// Direction ...
 type Direction = borsh.Enum
-type DirectionJson = string
+
+// DirectionJSON is a string representation of Direction
+type DirectionJSON = string
 
 const (
 	Left Direction = iota
 	Right
 )
 
+// MerkleHash ...
 type MerkleHash = CryptoHash
+
+// MerklePathItemJson ...
 type MerklePathItemJson struct {
 	Hash      CryptoHashBase58Encoded `json:"hash"`
-	Direction DirectionJson           `json:"direction"`
+	Direction DirectionJSON           `json:"direction"`
 }
 
+// MerklePathItem ...
 type MerklePathItem struct {
 	Hash      MerkleHash
 	Direction Direction
 }
+
+// MerklePath is an array of MerklePathItem
 type MerklePath = []MerklePathItem
+
+// MerklePathJson is a JSON representation of a MerklePath
 type MerklePathJson = []MerklePathItemJson
 
+// ValidatorStakeViewV1 ...
 type ValidatorStakeViewV1 struct {
 	AccountId AccountId
 	PublicKey PublicKey
 	Stake     Balance
 }
 
+// ValidatorStakeViewV2 ...
 type ValidatorStakeViewV2 struct {
 	AccountId   AccountId
 	PublicKey   PublicKey
@@ -50,16 +63,20 @@ type ValidatorStakeViewV2 struct {
 }
 
 // crypto primitives
+
+// Signature (ED25519 at the moment only)
 type Signature struct {
 	Enum    uint8
 	ED25519 [64]byte
 	// SECP256K1 []byte // TODO: be more specific on the number of bytes
 }
 
+// ED25519PublicKey ...
 type ED25519PublicKey struct {
 	Inner CryptoHash
 }
 
+// PublicKey (only for ED25519 at the moment)
 type PublicKey struct {
 	Enum    borsh.Enum `borsh_enum:"true"`
 	ED25519 ED25519PublicKey
@@ -67,22 +84,25 @@ type PublicKey struct {
 	// SECP256K1 Secp256K1PublicKey
 }
 
+// ApprovalInner ...
 type ApprovalInner struct {
 	Enum        borsh.Enum `borsh_enum:"true"`
 	Endorsement Endorsement
 }
 
+// Endorsement ...
 type Endorsement struct {
 	Inner CryptoHash
 }
 
-// rpc structs
+// ValidatorStakeView ...
 type ValidatorStakeView struct {
 	Enum borsh.Enum `borsh_enum:"true"`
 	V1   ValidatorStakeViewV1
 	V2   ValidatorStakeViewV2
 }
 
+// BlockHeaderInnerLiteViewJson ...
 type BlockHeaderInnerLiteViewJson struct {
 	Height        BlockHeight             `json:"height"`
 	EpochId       CryptoHashBase58Encoded `json:"epoch_id"`
@@ -142,7 +162,7 @@ type Unknown struct{}
 type SuccessValue struct {
 	Inner string
 }
-type SuccessReceiptId struct {
+type SuccessReceiptID struct {
 	Inner CryptoHash
 }
 
@@ -156,14 +176,14 @@ type ExecutionStatusView struct {
 	SuccessValue SuccessValue
 	/// The final action of the receipt returned a promise or the signed transaction was converted
 	/// to a receipt. Contains the receipt_id of the generated receipt.
-	SuccessReceiptId SuccessReceiptId
+	SuccessReceiptID SuccessReceiptID
 }
-type ExecutionOutcomeViewJson struct {
+type ExecutionOutcomeViewJSON struct {
 	Logs        []string                   `json:"logs"`
 	ReceiptIds  []Base58CryptoHash         `json:"receipt_ids"`
 	GasBurnt    Gas                        `json:"gas_burnt"`
 	TokensBurnt string                     `json:"tokens_burnt"`
-	ExecutorId  AccountId                  `json:"executor_id"`
+	ExecutorID  AccountId                  `json:"executor_id"`
 	Status      map[string]json.RawMessage `json:"status"`
 }
 
@@ -180,39 +200,39 @@ type ExecutionOutcomeView struct {
 	TokensBurnt big.Int
 	/// The id of the account on which the execution happens. For transaction this is signer_id,
 	/// for receipt this is receiver_id.
-	ExecutorId AccountId
+	ExecutorID AccountId
 	/// Execution status. Contains the result in case of successful execution.
 	Status ExecutionStatusView // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary struct
 }
 
-type ExecutionOutcomeWithIdViewJson struct {
+type ExecutionOutcomeWithIDViewJSON struct {
 	Proof     []MerklePathItemJson     `json:"proof"`
 	BlockHash CryptoHashBase58Encoded  `json:"block_hash"`
-	Id        CryptoHashBase58Encoded  `json:"id"`
-	Outcome   ExecutionOutcomeViewJson `json:"outcome"`
+	ID        CryptoHashBase58Encoded  `json:"id"`
+	Outcome   ExecutionOutcomeViewJSON `json:"outcome"`
 }
 
-type ExecutionOutcomeWithIdView struct {
+type ExecutionOutcomeWithIDView struct {
 	/// Proof of the execution outcome
 	Proof MerklePath
 	/// Block hash of the block that contains the outcome root
 	BlockHash CryptoHash
 	/// Id of the execution (transaction or receipt)
-	Id CryptoHash
+	ID CryptoHash
 	/// The actual outcome
 	Outcome ExecutionOutcomeView
 }
 
-type RpcLightClientExecutionProofResponseJson struct {
-	OutcomeProof     ExecutionOutcomeWithIdViewJson `json:"outcome_proof"`
+type RPCLightClientExecutionProofResponseJSON struct {
+	OutcomeProof     ExecutionOutcomeWithIDViewJSON `json:"outcome_proof"`
 	OutcomeRootProof MerklePathJson                 `json:"outcome_root_proof"`
 	BlockHeaderLite  LightClientBlockLiteViewJson   `json:"block_header_lite"`
 	BlockProof       MerklePathJson                 `json:"block_proof"`
 }
 
-type RpcLightClientExecutionProofResponse struct {
+type RPCLightClientExecutionProofResponse struct {
 	/// Proof of execution outcome
-	OutcomeProof ExecutionOutcomeWithIdView
+	OutcomeProof ExecutionOutcomeWithIDView
 	/// Proof of shard execution outcome root
 	OutcomeRootProof MerklePath
 	/// A light weight representation of block that contains the outcome root
@@ -222,7 +242,7 @@ type RpcLightClientExecutionProofResponse struct {
 	BlockProof MerklePath
 }
 
-// rpc types
+// Base58CryptoHash represents CryptoHashes in base58
 type Base58CryptoHash = string
 
 func NewValidatorStakeViewFromV1(v1 ValidatorStakeViewV1) ValidatorStakeView {

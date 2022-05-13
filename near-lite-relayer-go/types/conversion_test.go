@@ -2,9 +2,10 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/stretchr/testify/assert"

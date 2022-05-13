@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/near/borsh-go"
 	"github.com/stretchr/testify/assert"

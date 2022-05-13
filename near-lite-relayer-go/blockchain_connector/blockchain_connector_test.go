@@ -2,8 +2,9 @@ package blockchain_connector
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
 	"github.com/mr-tron/base58"
