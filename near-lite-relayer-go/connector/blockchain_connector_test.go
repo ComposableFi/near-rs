@@ -1,9 +1,10 @@
-package blockchain_connector
+package connector
 
 import (
 	"encoding/json"
-	"log"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
 	"github.com/mr-tron/base58"
@@ -15,19 +16,18 @@ func TestNearNetwork(t *testing.T) {
 	mainnet := Mainnet
 	assert.Equal(t, "testnet", testnet.ToString())
 	assert.Equal(t, "mainnet", mainnet.ToString())
-	assert.Equal(t, "https://rpc.testnet.near.org", testnet.getBaseUrl())
-	assert.Equal(t, "https://rpc.mainnet.near.org", mainnet.getBaseUrl())
+	assert.Equal(t, "https://rpc.testnet.near.org", testnet.getBaseURL())
+	assert.Equal(t, "https://rpc.mainnet.near.org", mainnet.getBaseURL())
 }
 
 func TestGetLightClientBlockView(t *testing.T) {
 	// go to the archive testnet to ensure that the block is present
 	blockchainConnector := NewBlockchainConnector(ArchiveTestnet)
 	_, err := blockchainConnector.GetLightClientBlockView("9exTJWj5ESCBG93Brc5qHyr7twLNaNaEWwNaj2ieVAEL")
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
 }
 
+//nolint
 func TestUnmarshalLightClientBlockView(t *testing.T) {
 	payload := `{
 		"jsonrpc": "2.0",
@@ -547,15 +547,16 @@ func TestUnmarshalLightClientBlockView(t *testing.T) {
 	}`
 
 	type response struct {
-		Result types.LightClientBlockViewJson `json:"result"`
+		Result types.LightClientBlockViewJSON `json:"result"`
 	}
 
 	var r response
 	err := json.Unmarshal([]byte(payload), &r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	lightClientBLockView, err := r.Result.IntoLightClientBlockView()
+	require.Nil(t, err)
+
 	assert.Equal(t,
 		"4qnb1YmQngt9X3M88igWTWWPxX8GLwjYh6nHYYBGhZs5vFP5JxRNS8MqTNjn9eBebkd5mw72cM5emDKVfMY7hMrc",
 		base58.Encode(lightClientBLockView.ApprovalsAfterNext[0].ED25519[:]),
@@ -578,13 +579,12 @@ func TestUnmarshalLightClientBlockViewInnerLite(t *testing.T) {
 	}}`
 
 	type result struct {
-		InnerLite types.BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+		InnerLite types.BlockHeaderInnerLiteViewJSON `json:"inner_lite"`
 	}
 
 	var r result
 	err := json.Unmarshal([]byte(payload), &r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	assert.Equal(t, "Ad5SqwwdfwdynaXtuzoSzMgjm6m9oZPbxeQf442hP2G2", r.InnerLite.EpochId)
+	require.Nil(t, err)
+
+	assert.Equal(t, "Ad5SqwwdfwdynaXtuzoSzMgjm6m9oZPbxeQf442hP2G2", r.InnerLite.EpochID)
 }

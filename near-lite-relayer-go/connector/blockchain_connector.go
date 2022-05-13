@@ -1,10 +1,13 @@
-package blockchain_connector
+// Package connector implements a blockchain connector to NEAR
+package connector
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/ComposableFi/near-trustless-bridge/near-lite-relayer-go/types"
@@ -29,7 +32,7 @@ func (n NearNetwork) ToString() string {
 	panic("unreachable")
 }
 
-func (n NearNetwork) getBaseUrl() string {
+func (n NearNetwork) getBaseURL() string {
 	switch n {
 	case Mainnet, Testnet:
 		return fmt.Sprintf("https://rpc.%s.near.org", n.ToString())
@@ -48,7 +51,6 @@ func NewBlockchainConnector(network NearNetwork) *BlockchainConector {
 }
 
 func (bc *BlockchainConector) GetLightClientBlockView(lastKnownHash types.Base58CryptoHash) (*types.LightClientBlockView, error) {
-	url := fmt.Sprintf("%s/", bc.network.getBaseUrl())
 
 	postBody, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -57,19 +59,32 @@ func (bc *BlockchainConector) GetLightClientBlockView(lastKnownHash types.Base58
 		"id":      "idontcare",
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	resp, err := http.Post(url, "application/json", responseBody)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/", bc.network.getBaseURL()), responseBody)
+	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	type response struct {
-		Result types.LightClientBlockViewJson `json:"result"`
+		Result types.LightClientBlockViewJSON `json:"result"`
 	}
 
 	var r response

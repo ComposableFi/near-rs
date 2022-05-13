@@ -1,16 +1,14 @@
-/// package lite client serves to encapsulate the lite client state
-/// and to perform simple validations in case that it's desired.
-/// Note that the real validations and checks will be performed in the
-/// lite client and on-chain. This can be used just to catch certain
-/// anomalies faster, and to avoid having to pay for a transaction.
-
-package lite_client
+// Package client serves to encapsulate the lite client state
+// and to perform simple validations in case that it's desired.
+// Note that the real validations and checks will be performed in the
+// lite client and on-chain. This can be used just to catch certain
+// anomalies faster, and to avoid having to pay for a transaction.
+package client
 
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -27,7 +25,7 @@ type LiteClient struct {
 
 func NewLiteClientFromCheckpoint(checkpoint types.LightClientBlockView) *LiteClient {
 	epochBlockProducers := make(map[types.CryptoHash][]types.ValidatorStakeView)
-	epochBlockProducers[checkpoint.InnerLite.NextEpochId] = checkpoint.NextBps
+	epochBlockProducers[checkpoint.InnerLite.NextEpochID] = checkpoint.NextBps
 	return &LiteClient{
 		head:                checkpoint,
 		epochBlockProducers: epochBlockProducers,
@@ -36,9 +34,9 @@ func NewLiteClientFromCheckpoint(checkpoint types.LightClientBlockView) *LiteCli
 
 func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView) (bool, error) {
 	log.Printf("Validating block view for height=%d on epoch=%s",
-		blockView.InnerLite.Height, base58.Encode(blockView.InnerLite.EpochId[:]),
+		blockView.InnerLite.Height, base58.Encode(blockView.InnerLite.EpochID[:]),
 	)
-	_, _, approvalMessage, err := reconstrunctLightClientBlockViewFields(blockView)
+	approvalMessage, err := reconstrunctLightClientBlockViewFields(blockView)
 	if err != nil {
 		return false, err
 	}
@@ -50,12 +48,12 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 	}
 
 	// (2)
-	if !(blockView.InnerLite.EpochId == head.InnerLite.EpochId || blockView.InnerLite.EpochId == head.InnerLite.NextEpochId) {
+	if !(blockView.InnerLite.EpochID == head.InnerLite.EpochID || blockView.InnerLite.EpochID == head.InnerLite.NextEpochID) {
 		return false, nil
 	}
 
 	// (3)
-	if blockView.InnerLite.EpochId == head.InnerLite.NextEpochId && blockView.NextBps == nil {
+	if blockView.InnerLite.EpochID == head.InnerLite.NextEpochID && blockView.NextBps == nil {
 		return false, nil
 	}
 
@@ -63,9 +61,9 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 	totalStake := big.Int{}
 	approvedStake := big.Int{}
 
-	epochBlockProducers, ok := l.epochBlockProducers[blockView.InnerLite.EpochId]
+	epochBlockProducers, ok := l.epochBlockProducers[blockView.InnerLite.EpochID]
 	if !ok {
-		return false, errors.New(fmt.Sprintf("epochBlockProducer not found for epoch id %s", base58.Encode(blockView.InnerLite.EpochId[:])))
+		return false, fmt.Errorf("epochBlockProducer not found for epoch id %s", base58.Encode(blockView.InnerLite.EpochID[:]))
 	}
 
 	for i := range blockView.ApprovalsAfterNext {
@@ -87,8 +85,10 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 		}
 	}
 
-	t := totalStake.Mul(&totalStake, big.NewInt(2))
-	threshold := t.Div(t, big.NewInt(3))
+	const thresholdNumerator = 2
+	const thresholdDenominator = 3
+	t := totalStake.Mul(&totalStake, big.NewInt(thresholdNumerator))
+	threshold := t.Div(t, big.NewInt(thresholdDenominator))
 	if approvedStake.Cmp(threshold) == -1 {
 		return false, nil
 	}
@@ -105,20 +105,20 @@ func (l *LiteClient) ValidateAndUpdateHead(blockView *types.LightClientBlockView
 		}
 	}
 
-	l.epochBlockProducers[blockView.InnerLite.NextEpochId] = blockView.NextBps
+	l.epochBlockProducers[blockView.InnerLite.NextEpochID] = blockView.NextBps
 	l.head = *blockView
 
 	return true, nil
 }
 
-func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockView) (*types.CryptoHash, *types.CryptoHash, []byte, error) {
+func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockView) ([]byte, error) {
 	currentBlockHash, err := currentBlockHash(blockView)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	nextBlockHash, err := nextBlockHash(blockView.NextBlockInnerHash, *currentBlockHash)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	approvalInner := types.ApprovalInner{
 		Enum: 0,
@@ -128,13 +128,17 @@ func reconstrunctLightClientBlockViewFields(blockView *types.LightClientBlockVie
 	}
 	approvalInnerSerialized, err := borsh.Serialize(approvalInner)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(blockView.InnerLite.Height+2))
-	var approvalMessage []byte
-	approvalMessage = append(approvalInnerSerialized, b...)
-	return currentBlockHash, &blockView.NextBlockInnerHash, approvalMessage, nil
+
+	const uint64SizeInBytes = 8
+	b := make([]byte, uint64SizeInBytes)
+	// needs to add two to the current height according to the spec (go lint!)
+	const addTwo = 2
+	binary.LittleEndian.PutUint64(b, blockView.InnerLite.Height+addTwo)
+	// nolint
+	approvalMessage := append(approvalInnerSerialized, b...)
+	return approvalMessage, nil
 
 }
 
@@ -147,15 +151,13 @@ func currentBlockHash(blockView *types.LightClientBlockView) (*types.CryptoHash,
 
 	innertLiteHash := sha256.Sum256(innerLiteSerialized)
 	// concatenate innerLiteHash with innerRestHash
-	x := []byte{}
-	x = append(innertLiteHash[:], blockView.InnerRestHash[:]...)
+	x := append(innertLiteHash[:], blockView.InnerRestHash[:]...)
 	hashX := sha256.Sum256(x)
 	currentBlockHash := sha256.Sum256(append(hashX[:], blockView.PrevBlockHash[:]...))
 	return &currentBlockHash, nil
 }
 func nextBlockHash(nextBlockInnerHash, currentBlockHash types.CryptoHash) (*types.CryptoHash, error) {
-	concatHashes := []byte{}
-	concatHashes = append(nextBlockInnerHash[:], currentBlockHash[:]...)
+	concatHashes := append(nextBlockInnerHash[:], currentBlockHash[:]...)
 	serializedHash, err := borsh.Serialize(sha256.Sum256(concatHashes))
 	if err != nil {
 		return nil, err
@@ -181,7 +183,7 @@ func calculateMerklelizationHashes(executionOutcome *types.ExecutionOutcomeView)
 		return nil, err
 	}
 
-	executorId, err := borsh.Serialize(executionOutcome.ExecutorId)
+	executorID, err := borsh.Serialize(executionOutcome.ExecutorID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +194,10 @@ func calculateMerklelizationHashes(executionOutcome *types.ExecutionOutcomeView)
 	}
 
 	var logsPayload []byte
+	//nolint
 	logsPayload = append(receiptIds, gasBurnt...)
 	logsPayload = append(logsPayload, tokensBurnt...)
-	logsPayload = append(logsPayload, executorId...)
+	logsPayload = append(logsPayload, executorID...)
 	logsPayload = append(logsPayload, status...)
 
 	merklelizationHashes := []types.CryptoHash{sha256.Sum256(logsPayload)}

@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"log"
+	"github.com/stretchr/testify/require"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/near/borsh-go"
@@ -23,15 +23,12 @@ func TestPublicKeySerialization(t *testing.T) {
 		},
 	}
 	pkSerialized, err := borsh.Serialize(pk)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	var pkDeserialized PublicKey
 	err = borsh.Deserialize(&pkDeserialized, pkSerialized)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, pubKeyB58, base58.Encode(pkDeserialized.ED25519.Inner[:]))
 	assert.Equal(t, pkDeserialized.Enum, borsh.Enum(0))
 }
@@ -39,8 +36,7 @@ func TestPublicKeySerialization(t *testing.T) {
 func TestSha256(t *testing.T) {
 	s := sha256.Sum256([]byte{1, 2, 3})
 	ss, err := borsh.Serialize(s)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	assert.Equal(t, s[:], ss)
 }
