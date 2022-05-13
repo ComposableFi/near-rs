@@ -1,4 +1,4 @@
-package blockchain_connector
+package connector
 
 import (
 	"encoding/json"
@@ -16,8 +16,8 @@ func TestNearNetwork(t *testing.T) {
 	mainnet := Mainnet
 	assert.Equal(t, "testnet", testnet.ToString())
 	assert.Equal(t, "mainnet", mainnet.ToString())
-	assert.Equal(t, "https://rpc.testnet.near.org", testnet.getBaseUrl())
-	assert.Equal(t, "https://rpc.mainnet.near.org", mainnet.getBaseUrl())
+	assert.Equal(t, "https://rpc.testnet.near.org", testnet.getBaseURL())
+	assert.Equal(t, "https://rpc.mainnet.near.org", mainnet.getBaseURL())
 }
 
 func TestGetLightClientBlockView(t *testing.T) {
@@ -27,6 +27,7 @@ func TestGetLightClientBlockView(t *testing.T) {
 	require.Nil(t, err)
 }
 
+//nolint
 func TestUnmarshalLightClientBlockView(t *testing.T) {
 	payload := `{
 		"jsonrpc": "2.0",
@@ -546,7 +547,7 @@ func TestUnmarshalLightClientBlockView(t *testing.T) {
 	}`
 
 	type response struct {
-		Result types.LightClientBlockViewJson `json:"result"`
+		Result types.LightClientBlockViewJSON `json:"result"`
 	}
 
 	var r response
@@ -578,12 +579,12 @@ func TestUnmarshalLightClientBlockViewInnerLite(t *testing.T) {
 	}}`
 
 	type result struct {
-		InnerLite types.BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+		InnerLite types.BlockHeaderInnerLiteViewJSON `json:"inner_lite"`
 	}
 
 	var r result
 	err := json.Unmarshal([]byte(payload), &r)
 	require.Nil(t, err)
 
-	assert.Equal(t, "Ad5SqwwdfwdynaXtuzoSzMgjm6m9oZPbxeQf442hP2G2", r.InnerLite.EpochId)
+	assert.Equal(t, "Ad5SqwwdfwdynaXtuzoSzMgjm6m9oZPbxeQf442hP2G2", r.InnerLite.EpochID)
 }

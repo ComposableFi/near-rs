@@ -16,7 +16,7 @@ func intoCryptoHash(b Base58CryptoHash) CryptoHash {
 	return result
 }
 
-func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlockView, error) {
+func (j *LightClientBlockViewJSON) IntoLightClientBlockView() (*LightClientBlockView, error) {
 
 	nextBps, err := intoNextValidatorStakeViews(j.NextBps)
 	if err != nil {
@@ -37,11 +37,11 @@ func (j *LightClientBlockViewJson) IntoLightClientBlockView() (*LightClientBlock
 	}, err
 }
 
-func (j *BlockHeaderInnerLiteViewJson) intoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
+func (j *BlockHeaderInnerLiteViewJSON) intoBlockHeaderInnerLiteView() BlockHeaderInnerLiteView {
 	return BlockHeaderInnerLiteView{
 		Height:          j.Height,
-		EpochId:         intoCryptoHash(j.EpochId),
-		NextEpochId:     intoCryptoHash(j.NextEpochId),
+		EpochID:         intoCryptoHash(j.EpochID),
+		NextEpochID:     intoCryptoHash(j.NextEpochID),
 		PrevStateRoot:   intoCryptoHash(j.PrevStateRoot),
 		OutcomeRoot:     intoCryptoHash(j.OutcomeRoot),
 		Timestamp:       j.Timestamp,
@@ -53,7 +53,7 @@ func (j *BlockHeaderInnerLiteViewJson) intoBlockHeaderInnerLiteView() BlockHeade
 func intoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeView, error) {
 
 	type rawStruct struct {
-		AccountId                   string `json:"account_id"`
+		AccountID                   string `json:"account_id"`
 		PublicKey                   string `json:"public_key"`
 		Stake                       string `json:"stake"`
 		ValidatorStakeStructVersion string `json:"validator_stake_struct_version"`
@@ -72,17 +72,18 @@ func intoNextValidatorStakeViews(nextBps []json.RawMessage) ([]ValidatorStakeVie
 			return nil, err
 		}
 		b := big.Int{}
-		b.SetString(r.Stake, 10)
+		const decimalPower = 10
+		b.SetString(r.Stake, decimalPower)
 		switch r.ValidatorStakeStructVersion {
 		case "V1":
 			result = append(result, NewValidatorStakeViewFromV1(ValidatorStakeViewV1{
-				AccountId: r.AccountId,
+				AccountID: r.AccountID,
 				PublicKey: *publicKey,
 				Stake:     b,
 			}))
 		case "V2":
 			result = append(result, NewValidatorStakeViewFromV2(ValidatorStakeViewV2{
-				AccountId:   r.AccountId,
+				AccountID:   r.AccountID,
 				PublicKey:   *publicKey,
 				Stake:       b,
 				IsChunkOnly: false, // TODO: validate this
@@ -104,7 +105,10 @@ func intoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error)
 			continue
 		}
 		var serializedData string
-		json.Unmarshal([]byte(*signatureEncoded), &serializedData)
+		err := json.Unmarshal([]byte(*signatureEncoded), &serializedData)
+		if err != nil {
+			return nil, err
+		}
 		if !strings.HasPrefix(serializedData, knownPrefix) {
 			return nil, errors.New("unknown signature type")
 		}
@@ -112,11 +116,13 @@ func intoSignatures(approvalsAfterNext []*json.RawMessage) ([]*Signature, error)
 		splittedString := strings.Split(serializedData, ":")
 		// decode the signature (which expressed in base58)
 		data := base58.Decode(splittedString[1])
-		if len(data) != 64 {
+		const validLenghtData = 64
+		if len(data) != validLenghtData {
 			return nil, errors.New("signature size must be of 64 bytes")
 		}
 
-		var signatureData [64]byte
+		const signatureSize = 64
+		var signatureData [signatureSize]byte
 		copy(signatureData[:], data)
 		result = append(result, &Signature{
 			Enum:    0,
@@ -137,11 +143,12 @@ func unmarshallPublicKey(serializedData string) (*PublicKey, error) {
 
 	// decode the public key (which expressed in base58)
 	data := base58.Decode(splittedString[1])
-	if len(data) != 32 {
+	const ed25519Length = 32
+	if len(data) != ed25519Length {
 		return nil, errors.New("publick key size must be 32 bytes")
 	}
 
-	var publicKeyData [32]byte
+	var publicKeyData [ed25519Length]byte
 	copy(publicKeyData[:], data)
 	return &PublicKey{
 		Enum: 0,
@@ -150,8 +157,9 @@ func unmarshallPublicKey(serializedData string) (*PublicKey, error) {
 		},
 	}, nil
 }
-func (mpi *MerklePathItemJson) intoMerklePathItem() *MerklePathItem {
-	var hash [32]byte
+func (mpi *MerklePathItemJSON) intoMerklePathItem() *MerklePathItem {
+	const validHashLength = 32
+	var hash [validHashLength]byte
 	copy(hash[:], base58.Decode(mpi.Hash))
 	base58.Encode(hash[:])
 	var direction Direction
@@ -189,7 +197,7 @@ func (op *ExecutionOutcomeWithIDViewJSON) intoExecutionOutcomeWithIDView() (*Exe
 	}, nil
 }
 
-func (lcb *LightClientBlockLiteViewJson) IntoLightClientBlockView() *LightClientBlockLiteView {
+func (lcb *LightClientBlockLiteViewJSON) IntoLightClientBlockView() *LightClientBlockLiteView {
 	var prevBlockHash, innerRestHash CryptoHash
 	copy(prevBlockHash[:], base58.Decode(lcb.PrevBlockHash))
 	copy(innerRestHash[:], base58.Decode(lcb.InnerRestHash))
@@ -230,13 +238,19 @@ func (eo *ExecutionOutcomeViewJSON) intoExecutionOutcomeView() (*ExecutionOutcom
 		receiptIds[i] = intoCryptoHash(ri)
 	}
 	var status ExecutionStatusView
+	const unknown = 0
+	const executionStatusView = 2
+	const successReceiptID = 3
 	for k, v := range eo.Status {
 		switch k {
 		case "Uknonwn":
 			var s string
-			json.Unmarshal([]byte(v), &s)
+			err := json.Unmarshal([]byte(v), &s)
+			if err != nil {
+				return nil, err
+			}
 			status = ExecutionStatusView{
-				Enum:    0,
+				Enum:    unknown,
 				Unknown: Unknown{},
 			}
 		case "Failure":
@@ -244,19 +258,25 @@ func (eo *ExecutionOutcomeViewJSON) intoExecutionOutcomeView() (*ExecutionOutcom
 			return nil, errors.New("unsupported failure transaction")
 		case "SuccessValues":
 			var s string
-			json.Unmarshal([]byte(v), &s)
+			err := json.Unmarshal([]byte(v), &s)
+			if err != nil {
+				return nil, err
+			}
 			status = ExecutionStatusView{
-				Enum: 2,
+				Enum: executionStatusView,
 				SuccessValue: SuccessValue{
 					Inner: s,
 				},
 			}
 		case "SuccessReceiptID":
 			var s string
-			json.Unmarshal([]byte(v), &s)
+			err := json.Unmarshal([]byte(v), &s)
+			if err != nil {
+				return nil, err
+			}
 			cryptoHash := intoCryptoHash(s)
 			status = ExecutionStatusView{
-				Enum: 3,
+				Enum: successReceiptID,
 				SuccessReceiptID: SuccessReceiptID{
 					Inner: cryptoHash,
 				},
@@ -266,7 +286,8 @@ func (eo *ExecutionOutcomeViewJSON) intoExecutionOutcomeView() (*ExecutionOutcom
 	}
 	var tokensBurnt big.Int
 
-	tokensBurnt.SetString(eo.TokensBurnt, 10)
+	const numberBase = 10
+	tokensBurnt.SetString(eo.TokensBurnt, numberBase)
 
 	return &ExecutionOutcomeView{
 		Logs:        eo.Logs,

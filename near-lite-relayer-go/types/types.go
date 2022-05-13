@@ -13,7 +13,7 @@ type CryptoHashBase58Encoded = string
 type Gas = uint64
 type Balance = big.Int // borsh maps u128 -> big.Int
 type BlockHeight = uint64
-type AccountId = string
+type AccountID = string
 
 // Direction ...
 type Direction = borsh.Enum
@@ -29,8 +29,8 @@ const (
 // MerkleHash ...
 type MerkleHash = CryptoHash
 
-// MerklePathItemJson ...
-type MerklePathItemJson struct {
+// MerklePathItemJSON ...
+type MerklePathItemJSON struct {
 	Hash      CryptoHashBase58Encoded `json:"hash"`
 	Direction DirectionJSON           `json:"direction"`
 }
@@ -44,19 +44,19 @@ type MerklePathItem struct {
 // MerklePath is an array of MerklePathItem
 type MerklePath = []MerklePathItem
 
-// MerklePathJson is a JSON representation of a MerklePath
-type MerklePathJson = []MerklePathItemJson
+// MerklePathJSON is a JSON representation of a MerklePath
+type MerklePathJSON = []MerklePathItemJSON
 
 // ValidatorStakeViewV1 ...
 type ValidatorStakeViewV1 struct {
-	AccountId AccountId
+	AccountID AccountID
 	PublicKey PublicKey
 	Stake     Balance
 }
 
 // ValidatorStakeViewV2 ...
 type ValidatorStakeViewV2 struct {
-	AccountId   AccountId
+	AccountID   AccountID
 	PublicKey   PublicKey
 	Stake       Balance
 	IsChunkOnly bool
@@ -102,11 +102,11 @@ type ValidatorStakeView struct {
 	V2   ValidatorStakeViewV2
 }
 
-// BlockHeaderInnerLiteViewJson ...
-type BlockHeaderInnerLiteViewJson struct {
+// BlockHeaderInnerLiteViewJSON ...
+type BlockHeaderInnerLiteViewJSON struct {
 	Height        BlockHeight             `json:"height"`
-	EpochId       CryptoHashBase58Encoded `json:"epoch_id"`
-	NextEpochId   CryptoHashBase58Encoded `json:"next_epoch_id"`
+	EpochID       CryptoHashBase58Encoded `json:"epoch_id"`
+	NextEpochID   CryptoHashBase58Encoded `json:"next_epoch_id"`
 	PrevStateRoot CryptoHashBase58Encoded `json:"prev_state_root"`
 	OutcomeRoot   CryptoHashBase58Encoded `json:"outcome_root"`
 	/// Legacy json number. Should not be used.
@@ -118,8 +118,8 @@ type BlockHeaderInnerLiteViewJson struct {
 
 type BlockHeaderInnerLiteView struct {
 	Height        BlockHeight
-	EpochId       CryptoHash
-	NextEpochId   CryptoHash
+	EpochID       CryptoHash
+	NextEpochID   CryptoHash
 	PrevStateRoot CryptoHash
 	OutcomeRoot   CryptoHash
 	/// Legacy json number. Should not be used.
@@ -128,10 +128,10 @@ type BlockHeaderInnerLiteView struct {
 	BlockMerkleRoot CryptoHash
 }
 
-type LightClientBlockViewJson struct {
+type LightClientBlockViewJSON struct {
 	PrevBlockHash      CryptoHashBase58Encoded      `json:"prev_block_hash"`
 	NextBlockInnerHash CryptoHashBase58Encoded      `json:"next_block_inner_hash"`
-	InnerLite          BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+	InnerLite          BlockHeaderInnerLiteViewJSON `json:"inner_lite"`
 	InnerRestHash      CryptoHashBase58Encoded      `json:"inner_rest_hash"`
 	NextBps            []json.RawMessage            `json:"next_bps"`
 	ApprovalsAfterNext []*json.RawMessage           `json:"approvals_after_next"`
@@ -146,10 +146,10 @@ type LightClientBlockView struct {
 	ApprovalsAfterNext []*Signature
 }
 
-type LightClientBlockLiteViewJson struct {
+type LightClientBlockLiteViewJSON struct {
 	PrevBlockHash CryptoHashBase58Encoded      `json:"prev_block_hash"`
 	InnerRestHash CryptoHashBase58Encoded      `json:"inner_rest_hash"`
-	InnerLite     BlockHeaderInnerLiteViewJson `json:"inner_lite"`
+	InnerLite     BlockHeaderInnerLiteViewJSON `json:"inner_lite"`
 }
 
 type LightClientBlockLiteView struct {
@@ -183,7 +183,7 @@ type ExecutionOutcomeViewJSON struct {
 	ReceiptIds  []Base58CryptoHash         `json:"receipt_ids"`
 	GasBurnt    Gas                        `json:"gas_burnt"`
 	TokensBurnt string                     `json:"tokens_burnt"`
-	ExecutorID  AccountId                  `json:"executor_id"`
+	ExecutorID  AccountID                  `json:"executor_id"`
 	Status      map[string]json.RawMessage `json:"status"`
 }
 
@@ -200,13 +200,13 @@ type ExecutionOutcomeView struct {
 	TokensBurnt big.Int
 	/// The id of the account on which the execution happens. For transaction this is signer_id,
 	/// for receipt this is receiver_id.
-	ExecutorID AccountId
+	ExecutorID AccountID
 	/// Execution status. Contains the result in case of successful execution.
 	Status ExecutionStatusView // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary struct
 }
 
 type ExecutionOutcomeWithIDViewJSON struct {
-	Proof     []MerklePathItemJson     `json:"proof"`
+	Proof     []MerklePathItemJSON     `json:"proof"`
 	BlockHash CryptoHashBase58Encoded  `json:"block_hash"`
 	ID        CryptoHashBase58Encoded  `json:"id"`
 	Outcome   ExecutionOutcomeViewJSON `json:"outcome"`
@@ -225,9 +225,9 @@ type ExecutionOutcomeWithIDView struct {
 
 type RPCLightClientExecutionProofResponseJSON struct {
 	OutcomeProof     ExecutionOutcomeWithIDViewJSON `json:"outcome_proof"`
-	OutcomeRootProof MerklePathJson                 `json:"outcome_root_proof"`
-	BlockHeaderLite  LightClientBlockLiteViewJson   `json:"block_header_lite"`
-	BlockProof       MerklePathJson                 `json:"block_proof"`
+	OutcomeRootProof MerklePathJSON                 `json:"outcome_root_proof"`
+	BlockHeaderLite  LightClientBlockLiteViewJSON   `json:"block_header_lite"`
+	BlockProof       MerklePathJSON                 `json:"block_proof"`
 }
 
 type RPCLightClientExecutionProofResponse struct {

@@ -26,7 +26,7 @@ func TestIntoNextValidatorStakeViews(t *testing.T) {
 	result, err := intoNextValidatorStakeViews([]json.RawMessage{r})
 	require.Nil(t, err)
 
-	assert.Equal(t, result[0].V1.AccountId, "node1")
+	assert.Equal(t, result[0].V1.AccountID, "node1")
 	assert.Equal(t, result[0].V1.PublicKey.ED25519.Inner[:], base58.Decode("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su"))
 	b := big.Int{}
 	b.SetString("23274801326131528968305033242063", 10)
