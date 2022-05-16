@@ -20,6 +20,8 @@ pub fn get_client_block_view(client_block_response: &str) -> io::Result<LightCli
 
 #[cfg(test)]
 mod tests {
+    use crate::client_proof::next_block_hash;
+
     use super::*;
     use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
 
@@ -539,6 +541,17 @@ mod tests {
             client_block_view.current_block_hash().as_ref(),
             JSONCryptoHash::from(
                 Base58CryptoHash::try_from("DixB3qV9kRwPDWMKTuhBLM67QgW7bpJ6M5hrZr79kC8F").unwrap()
+            )
+            .as_ref(),
+        );
+
+        let next_block_hash = next_block_hash(
+            client_block_view.next_block_inner_hash, client_block_view.current_block_hash()
+        );
+        assert_eq!(
+            next_block_hash.as_ref(),
+            JSONCryptoHash::from(
+                Base58CryptoHash::try_from("HNfD1Kex1awMexrsjCUa8bUrykMecGUpysLv5dBTj5pK").unwrap()
             )
             .as_ref(),
         )
