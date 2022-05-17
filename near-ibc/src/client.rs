@@ -1,9 +1,14 @@
-use ibc::core::{
-    ics02_client::{client_def::ClientDef, context::ClientReader},
-    ics24_host::identifier::ClientId,
+use ibc::{
+    clients::ics07_tendermint::{client_state::ClientState, consensus_state::ConsensusState},
+    core::{
+        ics02_client::{client_def::ClientDef, context::ClientReader},
+        ics24_host::identifier::ClientId,
+    },
 };
+use ibc_proto::ibc::core::commitment::v1::MerkleProof;
 
 use crate::header::NearHeader;
+use ibc::core::ics02_client::error::Error;
 
 #[derive(Debug, Clone)]
 struct NearLiteClient {}
@@ -11,9 +16,9 @@ struct NearLiteClient {}
 impl ClientDef for NearLiteClient {
     type Header = NearHeader;
 
-    type ClientState;
+    type ClientState = ClientState;
 
-    type ConsensusState;
+    type ConsensusState = ConsensusState;
 
     fn check_header_and_update_state(
         &self,
@@ -116,7 +121,7 @@ impl ClientDef for NearLiteClient {
         port_id: &ibc::core::ics24_host::identifier::PortId,
         channel_id: &ibc::core::ics24_host::identifier::ChannelId,
         sequence: ibc::core::ics04_channel::packet::Sequence,
-        ack: ibc::core::ics04_channel::msgs::acknowledgement::Acknowledgement,
+        ack: alloc::vec::Vec<u8>,
     ) -> Result<(), Error> {
         todo!()
     }

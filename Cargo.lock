@@ -1320,6 +1320,7 @@ name = "near-ibc"
 version = "0.1.0"
 dependencies = [
  "ibc",
+ "ibc-proto",
 ]
 
 [[package]]
