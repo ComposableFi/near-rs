@@ -3,4 +3,3 @@
 extern crate alloc;
 
 pub mod client;
-mod header;

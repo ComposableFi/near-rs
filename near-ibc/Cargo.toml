@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 ibc = {version = "0.13.0", default-features = false }
 ibc-proto = {version = "0.17.0", default-features = false }
+near-lite-client = {path = "../near-lite-client", default-features = false}

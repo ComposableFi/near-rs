@@ -24,6 +24,7 @@ mod block_validation;
 mod checkpoint;
 mod client;
 mod error;
+mod header;
 mod merkle_tree;
 mod signature;
 mod storage;

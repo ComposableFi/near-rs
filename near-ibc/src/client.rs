@@ -6,15 +6,15 @@ use ibc::{
     },
 };
 use ibc_proto::ibc::core::commitment::v1::MerkleProof;
+use near_lite_client::LightClientBlockView;
 
-use crate::header::NearHeader;
 use ibc::core::ics02_client::error::Error;
 
 #[derive(Debug, Clone)]
 struct NearLiteClient {}
 
 impl ClientDef for NearLiteClient {
-    type Header = NearHeader;
+    type Header = LightClientBlockView;
 
     type ClientState = ClientState;
 
