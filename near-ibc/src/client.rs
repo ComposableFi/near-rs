@@ -6,12 +6,14 @@ use ibc::{
     },
 };
 use ibc_proto::ibc::core::commitment::v1::MerkleProof;
-use near_lite_client::LightClientBlockView;
+use near_lite_client::{LightClient, LightClientBlockView, StateTransitionVerificator};
 
 use ibc::core::ics02_client::error::Error;
 
 #[derive(Debug, Clone)]
-struct NearLiteClient {}
+struct NearLiteClient {
+    inner: LightClient,
+}
 
 impl ClientDef for NearLiteClient {
     type Header = LightClientBlockView;
@@ -27,6 +29,7 @@ impl ClientDef for NearLiteClient {
         client_state: Self::ClientState,
         header: Self::Header,
     ) -> Result<(Self::ClientState, Self::ConsensusState), Error> {
+        let result = self.inner.validate_and_update_head(&header);
         todo!()
     }
 

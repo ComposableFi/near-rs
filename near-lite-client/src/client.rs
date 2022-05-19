@@ -11,16 +11,13 @@ use crate::{
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct LightClient {
-    /// how many epochs the light client will track
-    relevant_epochs: usize,
-
     state_storage: DummyStateStorage,
 }
 
 impl LightClient {
-    pub fn new_from_checkpoint(checkpoint: TrustedCheckpoint, relevant_epochs: usize) -> Self {
+    pub fn new_from_checkpoint(checkpoint: TrustedCheckpoint) -> Self {
         let head = LightClientBlockView::from(checkpoint);
         Self {
             state_storage: DummyStateStorage::new(
@@ -30,7 +27,6 @@ impl LightClient {
                     head.next_bps.as_ref().unwrap().clone(),
                 ),
             ),
-            relevant_epochs,
         }
     }
 

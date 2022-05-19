@@ -9,6 +9,7 @@ pub trait StateStorage {
     fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>);
 }
 // #[cfg(test)] // TODO put back when there is another impl of StateStorage
+#[derive(Clone, Debug)]
 pub struct DummyStateStorage {
     head: LightClientBlockView,
     #[allow(dead_code)]

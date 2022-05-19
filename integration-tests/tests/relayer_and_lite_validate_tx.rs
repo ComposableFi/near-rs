@@ -32,7 +32,7 @@ async fn both_relayer_and_lite_client_validate_tx() {
         BorshDeserialize::try_from_slice(&serialized_block_view).unwrap();
 
     let trusted_checkpoint = TrustedCheckpoint(block_view_for_lite_client);
-    let lite_client = LightClient::new_from_checkpoint(trusted_checkpoint, 10);
+    let lite_client = LightClient::new_from_checkpoint(trusted_checkpoint);
     // find a transaction in a block that has been validated
     let mut height = almost_latest_height - 500;
 

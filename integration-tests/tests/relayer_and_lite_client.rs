@@ -54,7 +54,7 @@ async fn both_relayer_and_lite_client() {
     let _lite_client_relayer = LightClientState::new_from_checkpoint(light_client_block_view);
 
     let trusted_checkpoint = TrustedCheckpoint(block_view_for_lite_client);
-    let mut lite_client = LightClient::new_from_checkpoint(trusted_checkpoint, 10);
+    let mut lite_client = LightClient::new_from_checkpoint(trusted_checkpoint);
 
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 

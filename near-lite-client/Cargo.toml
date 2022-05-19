@@ -8,11 +8,10 @@ homepage = "https://composable.finance"
 
 [dependencies]
 borsh = { version = "0.9.3", default-features = false }
-ibc = {version = "0.13.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
-tendermint = { version = "0.23.5", default-features = false }
+ibc = { git = "https://github.com/ComposableFi/ibc-rs.git", branch = "david/beefy-light-client", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22", default-features = false }
 
 [dev-dependencies]
 bs58 = "0.4.0"
