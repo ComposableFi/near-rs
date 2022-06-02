@@ -1,3 +1,5 @@
+#![feature(format_args_capture)]
+
 use sp_core::crypto::key_types;
 use sp_io::crypto;
 use runtime::new_test_ext;
