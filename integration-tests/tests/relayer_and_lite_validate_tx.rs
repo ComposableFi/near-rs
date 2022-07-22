@@ -80,13 +80,13 @@ async fn both_relayer_and_lite_client_validate_tx() {
                 )
                 .unwrap();
 
-                lite_client
+                assert!(lite_client
                     .validate_transaction(
                         &outcome_proof,
                         outcome_root_proof,
                         expected_block_outcome_root,
                     )
-                    .unwrap();
+                    .unwrap());
 
                 break 'l;
             }

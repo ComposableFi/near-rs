@@ -147,7 +147,9 @@ mod test {
     };
     use sp_core::ed25519::Signature as Ed25519Signature;
 
+    use std::str::FromStr;
     use std::{collections::BTreeMap, io};
+
     #[derive(Debug, serde::Deserialize)]
     struct ResultFromRpc {
         pub result: NearLightClientBlockView,
@@ -436,6 +438,90 @@ mod test {
                 .as_ref(),
         )
         .unwrap();
+        let dummy_lite_client = VeryDummyLiteClient {};
+        assert!(dummy_lite_client
+            .validate_transaction(
+                &outcome_proof,
+                MerklePath(outcome_root_proof),
+                expected_block_outcome_root,
+            )
+            .unwrap());
+    }
+
+    #[test]
+    fn test_validate_receipt() {
+        struct VeryDummyLiteClient;
+        impl StateStorage for VeryDummyLiteClient {
+            fn get_head(&self) -> &LightClientBlockView {
+                todo!()
+            }
+
+            fn set_new_head(&mut self, _new_head: LightClientBlockView) {
+                todo!()
+            }
+
+            fn get_epoch_block_producers(
+                &self,
+            ) -> &std::collections::BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
+            {
+                todo!()
+            }
+
+            fn insert_epoch_block_producers(
+                &mut self,
+                _epoch: CryptoHash,
+                _bps: Vec<ValidatorStakeView>,
+            ) {
+                todo!()
+            }
+        }
+
+        impl StateTransitionVerificator for VeryDummyLiteClient {
+            type D = SubstrateDigest;
+        }
+
+        let outcome_proof_proof = vec![
+            MerklePathItem {
+                hash: CryptoHash::from_str("CZ6nHH5DTCWTYTYtBLdgXqzbUq6S5cF7NsbEkGwkxDNk").unwrap(),
+                direction: crate::types::Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::from_str("68GdNyScYcGkke72wrkAZZhZHW1BCS9JLsrx7KMme8c3").unwrap(),
+                direction: crate::types::Direction::Right,
+            },
+        ];
+
+        let outcome_root_proof = vec![
+            MerklePathItem {
+                hash: CryptoHash::from_str("7qzNicfWS4xScJFqeERQJUKueupFCvH9wg8pBb3D3a6J").unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::from_str("4A9zZ1umpi36rXiuaKYJZgAjhUH9WoTrnSBXtA3wMdV2").unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+        ];
+
+        let serialized_status = vec![2, 0, 0, 0, 0];
+
+        let execution_outcome = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![],
+            gas_burnt: 223182562500,
+            tokens_burnt: 0,
+            executor_id: "relay.aurora".into(),
+            status: serialized_status,
+        };
+        let outcome_proof = OutcomeProof {
+            block_hash: CryptoHash::from_str("GuQUfY2rwTYdxqW4xHvmWdAU8f5hGyJVUHcaRAgEL4xj")
+                .unwrap(),
+            id: CryptoHash::from_str("HqAJYj526jSEUroMPcDUyfugB4AjoLPDiaR7dNX3oYUQ").unwrap(),
+            proof: outcome_proof_proof,
+            outcome: execution_outcome,
+        };
+
+        let expected_block_outcome_root =
+            CryptoHash::from_str("DgNETmXef4dUYrDEyxSb4Ms1R1Vggn6QeLEzYqhSshk3").unwrap();
         let dummy_lite_client = VeryDummyLiteClient {};
         assert!(dummy_lite_client
             .validate_transaction(

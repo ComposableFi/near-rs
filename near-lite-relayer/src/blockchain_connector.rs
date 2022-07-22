@@ -1,6 +1,8 @@
 use std::io;
 
 use borsh::BorshSerialize;
+use near_primitives::types::BlockReference;
+use near_primitives::views::BlockView;
 use near_primitives::{
     hash::CryptoHash,
     merkle::MerklePath,
@@ -212,6 +214,28 @@ impl BlockchainConnector {
         Ok((r.result.header.prev_hash, r.result.header.height))
     }
 
+    /// Queries network and returns block for given height or hash. You can also use finality
+    /// param to return latest block details.
+    pub fn get_block(&self, block_id: BlockReference) -> io::Result<BlockView> {
+        #[derive(Debug, Deserialize)]
+        struct Response {
+            pub result: BlockView,
+        }
+
+        let url = format!("{}/", self.network.get_base_url());
+        let params = ureq::json!(block_id);
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "block",
+                "params": params,
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+        let r = body.into_json::<Response>()?;
+        Ok(r.result)
+    }
+
     /// gets almost the latest finalized block that's available on the NearNetwork
     /// helpful for testing purposes where we just want to get a hash, and based on it
     /// retrieve the block view for the next block
@@ -342,6 +366,30 @@ impl BlockchainConnector {
 
         let url = format!("{}/", self.network.get_base_url());
         let params = ureq::json!({ "type": "transaction" , "transaction_hash": tx_hash, "sender_id": sender_id, "light_client_head": light_client_head});
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "EXPERIMENTAL_light_client_proof",
+                "params": params,
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+        Ok(body.into_json::<Response>()?.result.into())
+    }
+
+    pub fn get_light_client_proof_receipt(
+        &self,
+        light_client_head: Base58CryptoHash,
+        receipt_id: Base58CryptoHash,
+        receiver_id: String,
+    ) -> io::Result<RpcLightClientExecutionProofResponseForLiteClient> {
+        #[derive(Debug, Deserialize)]
+        struct Response {
+            pub result: RpcLightClientExecutionProofResponse,
+        }
+
+        let url = format!("{}/", self.network.get_base_url());
+        let params = ureq::json!({ "type": "receipt" , "receipt_id": receipt_id, "receiver_id": receiver_id, "light_client_head": light_client_head});
         let body = ureq::post(&url)
             .send_json(ureq::json!({
                 "jsonrpc": "2.0",

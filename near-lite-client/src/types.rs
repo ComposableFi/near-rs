@@ -16,9 +16,8 @@ pub enum Signature {
     Ed25519(Ed25519Signature),
 }
 
-#[derive(
-    Debug, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
-)]
+#[derive(Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize)]
+// #[cfg_attr(not(test), derive(Debug))]
 pub struct CryptoHash(pub [u8; 32]);
 
 impl Signature {
@@ -57,6 +56,32 @@ impl TryFrom<&[u8]> for CryptoHash {
 impl AsRef<[u8]> for CryptoHash {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+// #[cfg(test)]
+impl std::str::FromStr for CryptoHash {
+    type Err = ConversionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err::<Self::Err, _>(|e| ConversionError(e.to_string()))?;
+        Self::try_from(bytes.as_slice())
+    }
+}
+
+// #[cfg(test)]
+impl core::fmt::Display for CryptoHash {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&bs58::encode(&self.0).into_string(), f)
+    }
+}
+
+// #[cfg(test)]
+impl core::fmt::Debug for CryptoHash {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self.to_string(), f)
     }
 }
 
