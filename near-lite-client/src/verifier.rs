@@ -533,6 +533,83 @@ mod test {
     }
 
     #[test]
+    fn test_validate_receipt_fail() {
+        struct VeryDummyLiteClient;
+        impl StateStorage for VeryDummyLiteClient {
+            fn get_head(&self) -> &LightClientBlockView {
+                todo!()
+            }
+
+            fn set_new_head(&mut self, _new_head: LightClientBlockView) {
+                todo!()
+            }
+
+            fn get_epoch_block_producers(
+                &self,
+            ) -> &std::collections::BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
+            {
+                todo!()
+            }
+
+            fn insert_epoch_block_producers(
+                &mut self,
+                _epoch: CryptoHash,
+                _bps: Vec<ValidatorStakeView>,
+            ) {
+                todo!()
+            }
+        }
+
+        impl StateTransitionVerificator for VeryDummyLiteClient {
+            type D = SubstrateDigest;
+        }
+
+        let outcome_proof_proof = vec![];
+
+        let outcome_root_proof = vec![
+            MerklePathItem {
+                hash: CryptoHash::from_str("JDkdKdcRWxh4uWWYWCQnmUR44ZGiXeCB5gbJNYz8ga4").unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::from_str("61mpxNLE4yU5kxt2K9mey1WKeX85URjgEZ8oV19yYGMa").unwrap(),
+                direction: crate::types::Direction::Left,
+            },
+        ];
+
+        let serialized_status = vec![2, 8, 0, 0, 0, 73, 107, 57, 114, 73, 103, 61, 61];
+
+        let execution_outcome = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![
+                CryptoHash::from_str("2P1LgnwAYA5zN5PHJ3qq6QJYYU6X1u2JhmVnBAn1YXgW").unwrap(),
+            ],
+            gas_burnt: 223182562500,
+            tokens_burnt: 385302770527800000000,
+            executor_id: "plats-network.registry.test_oct.testnet".into(),
+            status: serialized_status,
+        };
+        let outcome_proof = OutcomeProof {
+            block_hash: CryptoHash::from_str("HUtTtq2Zd1Hu21vEeAq4TbDn4djSpupnD6wrMTxFGGiV")
+                .unwrap(),
+            id: CryptoHash::from_str("2eEFRvegpRFaXJRMoVvsYnSynGso2fawiUQs8frXpP4o").unwrap(),
+            proof: outcome_proof_proof,
+            outcome: execution_outcome,
+        };
+
+        let expected_block_outcome_root =
+            CryptoHash::from_str("xjqS87M2Vv8ZdnNLHYvoxxAy5CXrGzkg6NGj4Gsc7z7").unwrap();
+        let dummy_lite_client = VeryDummyLiteClient {};
+        assert!(dummy_lite_client
+            .validate_transaction(
+                &outcome_proof,
+                MerklePath(outcome_root_proof),
+                expected_block_outcome_root,
+            )
+            .unwrap());
+    }
+
+    #[test]
     fn test_validate_light_block() {
         struct LessDummyLiteClient {
             head: LightClientBlockView,

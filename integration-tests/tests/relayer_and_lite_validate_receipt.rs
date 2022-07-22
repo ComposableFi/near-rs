@@ -119,7 +119,7 @@ async fn both_relayer_and_lite_client_validate_receipt() {
 }
 
 #[tokio::test]
-async fn tst() {
+async fn both_relayer_and_lite_client_validate_receipt_fail() {
     env_logger::init();
 
     let blockchain_connector = BlockchainConnector::new(NearNetwork::Testnet);
@@ -134,12 +134,6 @@ async fn tst() {
     let block_view_for_lite_client: LightClientBlockView = coerce(light_client_block_view);
     let trusted_checkpoint = TrustedCheckpoint(block_view_for_lite_client);
     let lite_client = LightClient::new_from_checkpoint(trusted_checkpoint, 10);
-
-    // let block_hash =
-    //     coerce(CryptoHash::from_str("F7ph3PmGVdrgUY8eYN18kzMoNxT99bs5G7PCPNk76CFB").unwrap());
-    // let receipt_block = blockchain_connector
-    //     .get_block(BlockReference::BlockId(BlockId::Hash(block_hash)))
-    //     .unwrap();
 
     let id = CryptoHash::from_str("2eEFRvegpRFaXJRMoVvsYnSynGso2fawiUQs8frXpP4o").unwrap();
     let executor_id = "plats-network.registry.test_oct.testnet".to_owned();
