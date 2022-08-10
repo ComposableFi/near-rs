@@ -12,7 +12,7 @@ mod nibble;
 pub mod state_proof;
 
 use core::marker::PhantomData;
-use std::{collections::HashMap, vec::Vec};
+use std::{collections::HashMap, string::String, vec::Vec};
 mod host_functions;
 use borsh::BorshSerialize;
 use host_functions::HostFunctions;
@@ -58,23 +58,34 @@ impl CachedNodes {
         }
     }
 
-    fn extend_from_given(&mut self, given_nodes: &[NodeCoordinates], leaf_index: LeafIndex) {
+    fn extend_from_given(
+        &mut self,
+        given_nodes: &[NodeCoordinates],
+        leaf_index: LeafIndex,
+    ) -> Result<(), String> {
         if given_nodes.len() == 0 {
-            return;
+            return Ok(());
         }
 
-        given_nodes.iter().for_each(|node| {
-            let NodeCoordinates { index, level, hash } = node;
-            if self.inner.get(&(*level, *index)).is_some() {
-                return;
-            }
-            self.inner.insert((*level, *index), hash.unwrap());
-            let e = self
-                .path_item_cache_mapping
-                .entry(leaf_index)
-                .or_insert_with(Vec::new);
-            e.push((*level, *index));
-        });
+        given_nodes
+            .iter()
+            .map(|node| {
+                let NodeCoordinates { index, level, hash } = node;
+                if let Some(cached_node) = self.inner.get(&(*level, *index)) {
+                    if hash.unwrap() != *cached_node {
+                        return Err("cached_node != hash".into());
+                    }
+                    return Ok(());
+                }
+                self.inner.insert((*level, *index), hash.unwrap());
+                let e = self
+                    .path_item_cache_mapping
+                    .entry(leaf_index)
+                    .or_insert_with(Vec::new);
+                e.push((*level, *index));
+                Ok(())
+            })
+            .collect()
     }
 }
 
@@ -155,13 +166,21 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
     }
 
     /// Updates the cache with all the values that are given on a merkle proof
-    pub fn update_cache<'a>(&mut self, proofs: impl Iterator<Item = &'a MerklePath>) {
-        proofs.for_each(|proof| {
-            let (given_nodes, _) = self.get_node_coordinates(proof);
-            let leaf_index = given_nodes.last().unwrap().index;
-            self.cached_nodes
-                .extend_from_given(&given_nodes[0..(given_nodes.len() - 1)], leaf_index);
-        });
+    /// # Error
+    /// Returns error whenever there the cached node is different to the one
+    /// that could be inserted in the same coordinate.
+    pub fn update_cache<'a>(
+        &mut self,
+        proofs: impl Iterator<Item = &'a MerklePath>,
+    ) -> Result<(), String> {
+        proofs
+            .map(|proof| {
+                let (given_nodes, _) = self.get_node_coordinates(proof);
+                let leaf_index = given_nodes.last().unwrap().index;
+                self.cached_nodes
+                    .extend_from_given(&given_nodes[0..(given_nodes.len() - 1)], leaf_index)
+            })
+            .collect()
     }
 
     pub fn get_node_coordinates(
@@ -209,7 +228,7 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
                                 node_coordinates_given.push(NodeCoordinates {
                                     index: idx_given ^ 1,
                                     level: depth,
-                                    hash: Some(el.hash),
+                                    hash: None,
                                 });
                             } else {
                                 node_coordinates_to_calculate.push(NodeCoordinates {
@@ -222,16 +241,24 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
                         depth if depth == tree_depth => {
                             idx_to_calculate *= 2;
                             idx_given = idx_to_calculate;
+
+                            match el.direction {
+                                Direction::Left => {}
+                                Direction::Right => {
+                                    idx_given ^= 1;
+                                }
+                            }
                             // both nodes are given on the leaf level
                             node_coordinates_given.push(NodeCoordinates {
                                 index: idx_given,
                                 level: depth,
                                 hash: Some(el.hash),
                             });
+                            // it's the item itself
                             node_coordinates_given.push(NodeCoordinates {
                                 index: idx_given ^ 1,
                                 level: depth,
-                                hash: Some(el.hash),
+                                hash: None,
                             })
                         }
                         depth => {
@@ -320,7 +347,7 @@ mod tests {
                         NodeCoordinates {
                             index: 1,
                             level: 1,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -363,7 +390,7 @@ mod tests {
                         NodeCoordinates {
                             index: 1,
                             level: 2,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -406,14 +433,14 @@ mod tests {
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 0,
+                            index: 1,
                             level: 2,
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 1,
+                            index: 0,
                             level: 2,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -456,14 +483,14 @@ mod tests {
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 2,
+                            index: 3,
                             level: 2,
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 3,
+                            index: 2,
                             level: 2,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -512,11 +539,6 @@ mod tests {
                         NodeCoordinates {
                             index: 3,
                             level: 2,
-                            hash: Some(CryptoHash::default()),
-                        },
-                        NodeCoordinates {
-                            index: 4,
-                            level: 3,
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
@@ -524,6 +546,11 @@ mod tests {
                             level: 3,
                             hash: Some(CryptoHash::default()),
                         },
+                        NodeCoordinates {
+                            index: 4,
+                            level: 3,
+                            hash: None,
+                        },
                     ]
                     .into_iter()
                     .collect(),
@@ -579,14 +606,14 @@ mod tests {
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 0,
+                            index: 1,
                             level: 3,
                             hash: Some(CryptoHash::default()),
                         },
                         NodeCoordinates {
-                            index: 1,
+                            index: 0,
                             level: 3,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -650,7 +677,7 @@ mod tests {
                         NodeCoordinates {
                             index: 1,
                             level: 3,
-                            hash: Some(CryptoHash::default()),
+                            hash: None,
                         },
                     ]
                     .into_iter()
@@ -706,8 +733,90 @@ mod tests {
         }
 
         // try with cache updated
-        verifier.update_cache(merkle_proofs.iter());
+        verifier
+            .update_cache([&merkle_proofs[0], &merkle_proofs[1]].into_iter())
+            .unwrap();
         for (idx, element) in elements.iter().enumerate() {
+            let merkle_proof = &merkle_proofs[idx];
+            assert_eq!(
+                verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
+                root_hash
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_calculate_root_hash_with_spooked_merkle_proof() {
+        // create the merklized proofs
+        // get one, and insert a wrong value of one of the items leaving all of the rest corrects
+        // this will make the cache update fail if the given nodes aren't equal
+        let elements = &[1, 2, 3, 4, 5];
+        let (root_hash, merkle_proofs) = merklize(elements);
+        let mp = merkle_proofs[0].clone();
+        let mut mp2 = merkle_proofs[1].clone();
+        // modify the mp so that's no longer valid;
+        mp2[1] = mp2[2].clone();
+        assert_eq!(compute_root_from_path_and_item(&mp, &1), root_hash);
+        // verify that mp2 isn't valid
+        assert!(compute_root_from_path_and_item(&mp2, &2) != root_hash);
+
+        let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
+
+        // validate that all proofs that aren't spooked are valid
+        for (idx, element) in elements.iter().enumerate() {
+            let merkle_proof = &merkle_proofs[idx];
+            assert_eq!(
+                verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
+                root_hash
+            );
+        }
+
+        // try with cache updated
+        assert!(verifier.update_cache([&mp, &mp2].into_iter()).is_err());
+        for (idx, element) in [&mp, &mp2].iter().enumerate() {
+            let merkle_proof = &merkle_proofs[idx];
+            assert_eq!(
+                verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
+                root_hash
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_calculate_root_hash_with_spooked_merkle_proof_not_failing_in_cache_update() {
+        // Example where a proof is artificially modified (hence no longer valid)
+        // but the cache update does not yield errors.
+        // The errors are reported when validating the batch of proofs themselves.
+        let elements = &[1, 2, 3, 4, 5, 6, 7];
+        let (root_hash, merkle_proofs) = merklize(elements);
+        let mp = merkle_proofs[0].clone();
+        let mut mp2 = merkle_proofs[4].clone();
+        // modify the mp so that's no longer valid;
+        // note that we're modifying an element so that there's no issues when updating the cache
+        // (i.e. the same cached node won't have two different values)
+        mp2[0] = mp2[1].clone();
+        assert_eq!(compute_root_from_path_and_item(&mp, &1), root_hash);
+        // verify that mp2 isn't valid
+        assert!(compute_root_from_path_and_item(&mp2, &2) != root_hash);
+
+        let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
+
+        // validate that all proofs that aren't spooked are valid
+        for (idx, element) in elements.iter().enumerate() {
+            let merkle_proof = &merkle_proofs[idx];
+            assert_eq!(
+                verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
+                root_hash
+            );
+        }
+
+        // try with cache updated - it shouldn't fail
+        assert!(verifier.update_cache([&mp, &mp2].into_iter()).is_ok());
+
+        // however, it will fail when verifying the proofs
+        for (idx, element) in [&mp, &mp2].iter().enumerate() {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
@@ -746,7 +855,7 @@ mod tests {
 
         let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
         // try with cache updated
-        verifier.update_cache(merkle_proofs.iter());
+        assert!(verifier.update_cache(merkle_proofs.iter()).is_ok());
 
         let merkle_proof = &merkle_proofs[0];
         assert_eq!(
