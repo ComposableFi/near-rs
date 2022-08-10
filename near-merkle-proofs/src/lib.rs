@@ -8,6 +8,9 @@
 
 extern crate no_std_compat as std;
 
+mod nibble;
+pub mod state_proof;
+
 use core::marker::PhantomData;
 use std::{collections::HashMap, vec::Vec};
 mod host_functions;
