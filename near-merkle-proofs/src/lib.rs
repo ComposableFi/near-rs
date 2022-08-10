@@ -100,10 +100,14 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
     /// Computes the root hash of a given merkle proof and item hash
     /// It will update the cache of intermediate nodes so that they do not have
     /// to be recomputed
-    pub fn calculate_root_hash(&mut self, proof: &MerklePath, item_hash: CryptoHash) -> CryptoHash {
+    pub fn calculate_root_hash(
+        &mut self,
+        proof: &MerklePath,
+        item_hash: CryptoHash,
+    ) -> Result<CryptoHash, String> {
         // trivial example, where proof is empty
         if proof.len() == 0 {
-            return CryptoHash::default();
+            return Ok(CryptoHash::default());
         }
 
         // the first element is somewhat different, since the caller is passing the item's hash
@@ -113,10 +117,10 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
         let sibling_item = &proof[0];
 
         // calculate the hash for the leaf level by hashing the item_hash given and its sibling (provided in the proof)
-        let hash = match sibling_item.direction {
+        let hash = Ok(match sibling_item.direction {
             Direction::Left => hash_borsh::<_, HF>(&(sibling_item.hash, item_hash)),
             Direction::Right => hash_borsh::<_, HF>(&(item_hash, sibling_item.hash)),
-        };
+        });
 
         let NodeCoordinates { index, level, .. } =
             &node_coordinates_to_calculate[nodes_to_calculate - 0 - 1];
@@ -124,13 +128,17 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
 
         match cached_value {
             None => {
-                self.cached_nodes.inner.insert((*level, *index), hash);
+                self.cached_nodes
+                    .inner
+                    .insert((*level, *index), hash.clone().unwrap());
             }
             Some(parent_hash) => {
                 // ensure that, if the value was cached it matches the calculation made above
                 // this is important, otherwise when most of the intermediates nodes are cached, if this check
                 // is not made, a wrong proof could be passed and stil "yield" the right root hash
-                assert_eq!(parent_hash, &hash);
+                if parent_hash != &hash.clone().unwrap() {
+                    return Err("cached_value of parent hash != calculated hash".into());
+                }
             }
         }
 
@@ -147,17 +155,25 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
                     None => {
                         match merkle_path_item.direction {
                             Direction::Left => {
-                                hash = CryptoHash::hash_borsh(&(merkle_path_item.hash, hash))
+                                hash = Ok(CryptoHash::hash_borsh(&(
+                                    merkle_path_item.hash,
+                                    hash.unwrap(),
+                                )))
                             }
                             Direction::Right => {
-                                hash = CryptoHash::hash_borsh(&(hash, merkle_path_item.hash))
+                                hash = Ok(CryptoHash::hash_borsh(&(
+                                    hash.unwrap(),
+                                    merkle_path_item.hash,
+                                )))
                             }
                         };
                         // update the cache
-                        self.cached_nodes.inner.insert((*level, *index), hash);
+                        self.cached_nodes
+                            .inner
+                            .insert((*level, *index), hash.clone().unwrap());
                     }
                     Some(cached_value) => {
-                        hash = *cached_value;
+                        hash = Ok(*cached_value);
                     }
                 }
 
@@ -728,7 +744,7 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
 
@@ -740,7 +756,7 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
     }
@@ -768,7 +784,7 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
 
@@ -778,7 +794,7 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
     }
@@ -808,7 +824,7 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
 
@@ -820,9 +836,34 @@ mod tests {
             let merkle_proof = &merkle_proofs[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                root_hash
+                Ok(root_hash)
             );
         }
+    }
+
+    #[test]
+    fn test_calculate_root_hash_with_spooked_merkle_proof_on_leaves_level() {
+        // this test verifies that given that one of the leaves of the proofs
+        // is invalid, an error is thrown on calculate_root_hash.
+        let elements = &[1, 2, 3, 4, 5, 6, 7];
+        let (root_hash, merkle_proofs) = merklize(elements);
+        let mp = merkle_proofs[0].clone();
+        let mut mp2 = merkle_proofs[1].clone();
+
+        mp2[0] = mp2[1].clone();
+        assert_eq!(compute_root_from_path_and_item(&mp, &1), root_hash);
+        // verify that mp2 isn't valid
+        assert!(compute_root_from_path_and_item(&mp2, &2) != root_hash);
+
+        let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
+
+        // update cache only with valid proofs - it shouldn't fail
+        assert!(verifier.update_cache(merkle_proofs.iter()).is_ok());
+        // however, it will fail when verifying the proofs
+        assert_eq!(
+            verifier.calculate_root_hash(&mp2, CryptoHash::hash_borsh(&1)),
+            Err("cached_value of parent hash != calculated hash".into())
+        );
     }
 
     #[test]
@@ -839,7 +880,7 @@ mod tests {
         let merkle_proof = &merkle_proofs[0];
         assert_eq!(
             verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(&2)),
-            root_hash
+            Ok(root_hash)
         );
     }
 
@@ -860,7 +901,7 @@ mod tests {
         let merkle_proof = &merkle_proofs[0];
         assert_eq!(
             verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(&2)),
-            root_hash
+            Ok(root_hash)
         );
     }
 }
