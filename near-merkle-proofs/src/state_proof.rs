@@ -178,7 +178,7 @@ impl RawTrieNode {
         }
     }
 
-    pub(crate) fn get_key(&self) -> Option<&[u8]> {
+    fn get_key(&self) -> Option<&[u8]> {
         match self {
             RawTrieNode::Leaf(key, _, _) => Some(key),
             RawTrieNode::Extension(key, _) => Some(key),
