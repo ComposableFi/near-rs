@@ -4,3 +4,5 @@ pub mod blockchain_connector;
 mod client_block;
 mod client_proof;
 pub mod state;
+
+pub use client_proof::coerce;

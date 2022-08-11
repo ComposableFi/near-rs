@@ -2,16 +2,16 @@
 //!
 //! Validates that the proof for a certain transaction is valid
 
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use near_crypto::Signature;
 use near_primitives::{
     hash::CryptoHash,
     merkle::MerklePathItem,
-    types::{AccountId, Balance, Gas},
+    types::{AccountId, Gas},
     views::{
         validator_stake_view::ValidatorStakeView,
         BlockHeaderInnerLiteView as NearBlockHeaderInnerLiteView, ExecutionOutcomeView,
-        ExecutionStatusView, LightClientBlockView as NearLightClientBlockView,
+        LightClientBlockView as NearLightClientBlockView,
     },
 };
 
@@ -360,6 +360,14 @@ fn calculate_execution_outcome_hash(
     .as_slice()
     .try_into()
     .unwrap()
+}
+
+/// Tries to convert the given value to another by serializing it and deserializing it,
+/// otherwise panics.
+///
+/// Usually used to convert between types from NEAR crates and the duplicated types from the relayer.
+pub fn coerce<R: BorshDeserialize>(val: impl BorshSerialize) -> R {
+    BorshDeserialize::try_from_slice(val.try_to_vec().unwrap().as_ref()).unwrap()
 }
 
 #[cfg(test)]

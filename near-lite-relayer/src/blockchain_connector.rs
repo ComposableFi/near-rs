@@ -5,8 +5,10 @@ use near_primitives::{
     hash::CryptoHash,
     merkle::MerklePath,
     views::{
-        ExecutionOutcomeWithIdView, LightClientBlockLiteView,
-        LightClientBlockView as NearLightClientBlockView,
+        ExecutionOutcomeWithIdView,
+        FinalExecutionOutcomeWithReceiptView as NearFinalExecutionOutcomeWithReceiptView,
+        LightClientBlockLiteView, LightClientBlockView as NearLightClientBlockView,
+        ReceiptView as NearReceiptView,
     },
 };
 use near_sdk::json_types::Base58CryptoHash;
@@ -119,6 +121,54 @@ impl BlockchainConnector {
                 "jsonrpc": "2.0",
                 "method": "next_light_client_block",
                 "params": [last_known_hash_string],
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+
+        Ok(serde_json::from_value::<ResultFromRpc>(body.into_json().unwrap())?.result)
+    }
+
+    /// Fetches a receipt by it's ID (as is, without a status or execution outcome).
+    pub fn get_receipt_view(&self, receipt_id: Base58CryptoHash) -> io::Result<NearReceiptView> {
+        #[derive(Debug, Deserialize)]
+        struct ResultFromRpc {
+            result: NearReceiptView,
+        }
+
+        // http post http://127.0.0.1:3030/ jsonrpc=2.0 method=EXPERIMENTAL_receipt params:="[<receipt id>]" id="dontcare"
+        let url = format!("{}/", self.network.get_base_url());
+        let receipt_id = String::from(&receipt_id);
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "EXPERIMENTAL_receipt",
+                "params": [receipt_id],
+                "id": "dontcare",
+            }))
+            .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
+
+        Ok(serde_json::from_value::<ResultFromRpc>(body.into_json().unwrap())?.result)
+    }
+
+    /// Queries status of a transaction by hash, returning the final transaction result and details of all receipts.
+    pub fn get_transaction_status_view(
+        &self,
+        tx_hash: Base58CryptoHash,
+        sender_id: String,
+    ) -> io::Result<NearFinalExecutionOutcomeWithReceiptView> {
+        #[derive(Debug, Deserialize)]
+        struct ResultFromRpc {
+            result: NearFinalExecutionOutcomeWithReceiptView,
+        }
+
+        // http post http://127.0.0.1:3030/ jsonrpc=2.0 method=EXPERIMENTAL_tx_status params:="[<tx hash>, <sender id>]" id="dontcare"
+        let url = format!("{}/", self.network.get_base_url());
+        let tx_hash = String::from(&tx_hash);
+        let body = ureq::post(&url)
+            .send_json(ureq::json!({
+                "jsonrpc": "2.0",
+                "method": "EXPERIMENTAL_tx_status",
+                "params": [tx_hash, sender_id],
                 "id": "dontcare",
             }))
             .map_err(|_| io::Error::from(io::ErrorKind::Unsupported))?; // TODO: improve error message
