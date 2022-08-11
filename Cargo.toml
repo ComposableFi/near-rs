@@ -3,6 +3,7 @@ members = [
     "integration-tests",
     "near-lite-relayer",
     "near-lite-client",
+    "near-merkle-proofs",
 ]
 
 resolver = "2"
