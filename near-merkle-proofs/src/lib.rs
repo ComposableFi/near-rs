@@ -72,10 +72,13 @@ impl CachedNodes {
             .map(|node| {
                 let NodeCoordinates { index, level, hash } = node;
                 if let Some(cached_node) = self.inner.get(&(*level, *index)) {
-                    if hash.unwrap() != *cached_node {
-                        return Err("cached_node != hash".into());
+                    match hash {
+                        // given that the hash is cached, only check for a potential error
+                        Some(hash) if hash != cached_node => {
+                            return Err("cached_node != hash".into());
+                        }
+                        _ => return Ok(()),
                     }
-                    return Ok(());
                 }
                 self.inner.insert((*level, *index), hash.unwrap());
                 let e = self
