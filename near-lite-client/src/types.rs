@@ -1,81 +1,15 @@
-use borsh::maybestd::{io::Write, string::String};
+use borsh::maybestd::{string::String};
+use near_crypto::Signature;
 use sp_std::vec::Vec;
 
 use crate::{block_validation::Digest, error::NearLiteClientError};
 use borsh::{BorshDeserialize, BorshSerialize};
-use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
+use near_primitives::hash::{CryptoHash};
+use near_crypto::PublicKey;
 
 pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 #[derive(Debug)]
-pub struct ConversionError(String);
-#[derive(Debug, Clone)]
-pub struct PublicKey(pub [u8; 32]);
-
-#[derive(Debug, Clone)]
-pub enum Signature {
-    Ed25519(Ed25519Signature),
-}
-
-#[derive(
-    Debug, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
-)]
-pub struct CryptoHash(pub [u8; 32]);
-
-impl Signature {
-    const LEN: usize = 64;
-
-    pub fn from_raw(raw: &[u8]) -> Self {
-        Self::Ed25519(Ed25519Signature::from_raw(raw.try_into().unwrap()))
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        match self {
-            Self::Ed25519(inner) => &inner.0,
-        }
-    }
-}
-
-impl PublicKey {
-    const LEN: usize = 32;
-
-    pub fn from_raw(raw: &[u8]) -> Self {
-        Self(raw.try_into().unwrap())
-    }
-}
-
-impl TryFrom<&[u8]> for CryptoHash {
-    type Error = ConversionError;
-    fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-        if v.len() != 32 {
-            return Err(ConversionError("wrong size".into()));
-        }
-        let inner: [u8; 32] = v.try_into().unwrap();
-        Ok(CryptoHash(inner))
-    }
-}
-
-impl AsRef<[u8]> for CryptoHash {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl From<&PublicKey> for Ed25519Public {
-    fn from(pubkey: &PublicKey) -> Ed25519Public {
-        Ed25519Public(pubkey.0)
-    }
-}
-
-impl TryFrom<&[u8]> for PublicKey {
-    type Error = ConversionError;
-    fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-        if v.len() != 32 {
-            return Err(ConversionError("wrong size".into()));
-        }
-        let inner: [u8; 32] = v.try_into().unwrap();
-        Ok(PublicKey(inner))
-    }
-}
+pub struct ConversionError(pub String);
 
 pub type BlockHeight = u64;
 pub type AccountId = String;
@@ -289,43 +223,10 @@ impl From<BlockHeaderInnerLiteView> for BlockHeaderInnerLiteViewFinal {
     }
 }
 
-impl BorshDeserialize for Signature {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
-        let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
-        Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
-    }
-}
 
-impl BorshSerialize for Signature {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
-        match self {
-            Signature::Ed25519(signature) => {
-                BorshSerialize::serialize(&0u8, writer)?;
-                writer.write_all(&signature.0)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl BorshSerialize for PublicKey {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
-        BorshSerialize::serialize(&0u8, writer)?;
-        writer.write_all(&self.0)?;
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for PublicKey {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
-        Ok(Self(BorshDeserialize::deserialize(buf)?))
-    }
-}
 #[cfg(test)]
 mod tests {
-    use std::{io, str::FromStr};
+    use std::{io};
 
     use super::*;
 
@@ -340,46 +241,6 @@ mod tests {
         client_block_response: &str,
     ) -> io::Result<NearLightClientBlockView> {
         Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result)
-    }
-
-    #[test]
-    fn ensure_equality_on_signature_serialization() {
-        // given that this crate does not use `near-primitive`, we need to ensure that
-        // the serialized signature is equal to the output from the `near-primitive` crate
-        // because it is what it's used to calculate the `next_bp_hash`
-        use near_crypto::Signature as NearSignature;
-        let near_signature = NearSignature::from_str("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").unwrap();
-        let signature = Signature::from_raw(bs58::decode("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").into_vec().unwrap().as_ref());
-        let mut near_signature_buffer = vec![0; 64];
-        let mut signature_buffer = vec![0; 64];
-        near_signature
-            .serialize(&mut near_signature_buffer)
-            .unwrap();
-        signature.serialize(&mut signature_buffer).unwrap();
-
-        assert_eq!(signature_buffer, near_signature_buffer);
-    }
-
-    #[test]
-    fn ensure_equality_on_publickey_serialization() {
-        // given that this crate does not use `near-primitive`, we need to ensure that
-        // the serialized signature is equal to the output from the `near-primitive` crate
-        // because it is what it's used to calculate the `next_bp_hash`
-        use near_crypto::PublicKey as NearPublicKey;
-        let near_public_key =
-            NearPublicKey::from_str("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8").unwrap();
-        let pubkey_decoded = bs58::decode("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8")
-            .into_vec()
-            .unwrap();
-        let public_key = PublicKey::from_raw(pubkey_decoded.as_ref());
-        let mut near_public_key_buffer = vec![0; PublicKey::LEN];
-        let mut public_key_buffer = vec![0; PublicKey::LEN];
-        near_public_key
-            .serialize(&mut near_public_key_buffer)
-            .unwrap();
-        public_key.serialize(&mut public_key_buffer).unwrap();
-
-        assert_eq!(near_public_key_buffer, public_key_buffer);
     }
 
     #[test]
@@ -899,41 +760,4 @@ mod tests {
         // );
     }
 
-    #[test]
-    fn test_ensure_deserialization_equality_of_signatures_with_near_primitives() {
-        use near_crypto::{KeyType, Signature as NearSignature};
-        let near_signature = NearSignature::from_str("4tC17LadtbHChDDvEJaGrsmc1Jj7F6PT7GQq9Ncd8tykG5tNYxfA9kXz57tvwRbzeZjqjPykAPY2KrN4XMs4M9sB").unwrap();
-        let near_signature_serialized = near_signature.try_to_vec().unwrap();
-        let signature = Signature::try_from_slice(&near_signature_serialized).unwrap();
-
-        assert_eq!(
-            NearSignature::from_parts(KeyType::ED25519, signature.as_bytes()).unwrap(),
-            near_signature
-        )
-    }
-
-    #[test]
-    fn test_ensure_deserialization_equality_of_public_keys_with_near_primitives() {
-        use near_crypto::{ED25519PublicKey, PublicKey as NearPublicKey};
-        let near_publickey =
-            NearPublicKey::from_str("811gesxXYdYeThry96ZiWn8chgWYNyreiScMkmxg4U9u").unwrap();
-        let near_public_key_serialized = near_publickey.try_to_vec().unwrap();
-        let public_key = PublicKey::try_from_slice(&near_public_key_serialized).unwrap();
-        let inner_near_public_key = ED25519PublicKey::try_from(public_key.0).unwrap();
-        assert_eq!(NearPublicKey::from(inner_near_public_key), near_publickey);
-
-        let public_key_encoded = bs58::decode("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su")
-            .into_vec()
-            .unwrap();
-        assert_eq!(
-            NearPublicKey::try_from_slice(
-                PublicKey::from_raw(&public_key_encoded)
-                    .try_to_vec()
-                    .unwrap()
-                    .as_ref()
-            )
-            .unwrap(),
-            NearPublicKey::from_str("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su").unwrap()
-        );
-    }
 }

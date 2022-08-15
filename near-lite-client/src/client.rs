@@ -4,9 +4,11 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, ValidatorStakeView},
+    types::{LightClientBlockView, ValidatorStakeView},
     verifier::StateTransitionVerificator,
 };
+
+use near_primitives::hash::CryptoHash;
 
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).

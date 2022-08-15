@@ -1,6 +1,6 @@
 use crate::{
     block_validation::Digest,
-    types::{Direction, LiteClientResult, MerkleHash, MerklePathItem},
+    types::{Direction, LiteClientResult, MerkleHash, MerklePathItem, ConversionError}, error::NearLiteClientError,
 };
 use borsh::BorshSerialize;
 use sp_std::vec::Vec;
@@ -29,5 +29,5 @@ pub fn combine_hash<D: Digest>(
 ) -> LiteClientResult<MerkleHash> {
     Ok(MerkleHash::try_from(
         D::digest(&(hash1, hash2).try_to_vec()?).as_slice(),
-    )?)
+    ).map_err(|e| NearLiteClientError::Conversion(ConversionError(e.to_string())))?)
 }

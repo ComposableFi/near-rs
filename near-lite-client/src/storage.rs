@@ -1,6 +1,8 @@
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-use crate::types::{CryptoHash, LightClientBlockView, ValidatorStakeView};
+use crate::types::{LightClientBlockView, ValidatorStakeView};
+use near_primitives::hash::CryptoHash;
+
 
 pub trait StateStorage {
     fn get_head(&self) -> &LightClientBlockView;

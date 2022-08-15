@@ -1,12 +1,12 @@
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
-    signature::SignatureVerification,
     types::{
-        ApprovalInner, CryptoHash, LightClientBlockView, LiteClientResult, ValidatorStakeView,
+        ApprovalInner, LightClientBlockView, LiteClientResult, ValidatorStakeView,
     },
 };
 
+use near_primitives::hash::CryptoHash;
 use borsh::BorshSerialize;
 use sp_io::hashing::sha2_256;
 
@@ -77,7 +77,7 @@ pub fn validate_light_block<D: Digest>(
         if !maybe_signature
             .as_ref()
             .unwrap()
-            .verify(&approval_message, validator_public_key.clone())
+            .verify(&approval_message, &validator_public_key)
         {
             return Ok(false);
         }

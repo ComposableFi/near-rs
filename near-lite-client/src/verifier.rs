@@ -3,10 +3,11 @@ use crate::{
     merkle_tree::compute_root_from_path,
     storage::StateStorage,
     types::{
-        CryptoHash, ExecutionOutcomeView, LightClientBlockView, LiteClientResult, MerklePath,
+        ExecutionOutcomeView, LightClientBlockView, LiteClientResult, MerklePath,
         OutcomeProof,
     },
 };
+use near_primitives::hash::CryptoHash;
 use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
@@ -131,31 +132,23 @@ mod test {
     use crate::{
         block_validation::SubstrateDigest,
         types::{
-            BlockHeaderInnerLiteView, MerklePathItem, PublicKey, Signature, ValidatorStakeView,
+            BlockHeaderInnerLiteView, MerklePathItem, ValidatorStakeView,
             ValidatorStakeViewV1,
         },
     };
     use borsh::BorshDeserialize;
-    use near_crypto::Signature as NearSignature;
     use near_primitives::{
-        hash::CryptoHash as NearCryptoHash,
         views::{
             validator_stake_view::ValidatorStakeView as NearValidatorStakeView,
             BlockHeaderInnerLiteView as NearBlockHeaderInnerLiteView,
             LightClientBlockView as NearLightClientBlockView,
         },
     };
-    use sp_core::ed25519::Signature as Ed25519Signature;
 
     use std::{collections::BTreeMap, io};
     #[derive(Debug, serde::Deserialize)]
     struct ResultFromRpc {
         pub result: NearLightClientBlockView,
-    }
-    impl From<NearCryptoHash> for CryptoHash {
-        fn from(hash: NearCryptoHash) -> Self {
-            Self(hash.0)
-        }
     }
 
     impl From<NearBlockHeaderInnerLiteView> for BlockHeaderInnerLiteView {
@@ -190,29 +183,19 @@ mod test {
                 approvals_after_next: near
                     .approvals_after_next
                     .into_iter()
-                    .map(|x| x.map(Signature::from))
+                    // .map(|x| x.map(Signature::from))
                     .collect(),
             }
         }
     }
 
-    impl From<NearSignature> for Signature {
-        fn from(signature: NearSignature) -> Self {
-            match signature {
-                NearSignature::ED25519(inner_signature) => {
-                    Self::Ed25519(Ed25519Signature::try_from(inner_signature.as_ref()).unwrap())
-                }
-                _ => unimplemented!("Substrate runtime only supports ED25519"),
-            }
-        }
-    }
 
     impl From<NearValidatorStakeView> for ValidatorStakeView {
         fn from(stake_view: NearValidatorStakeView) -> Self {
             let validator_stake = stake_view.into_validator_stake();
             Self::V1(ValidatorStakeViewV1 {
                 account_id: validator_stake.account_id().as_str().to_owned(),
-                public_key: PublicKey::try_from(validator_stake.public_key().key_data()).unwrap(),
+                public_key: validator_stake.public_key().clone(),
                 stake: validator_stake.stake(),
             })
         }

@@ -1,4 +1,4 @@
-use crate::types::{PublicKey, Signature};
+use near_crypto::{Signature, PublicKey};
 use sp_core::ed25519::Public as Ed25519Public;
 use sp_io::crypto::ed25519_verify;
 
@@ -8,10 +8,11 @@ pub trait SignatureVerification {
 
 impl SignatureVerification for Signature {
     fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
-        match self {
-            Self::Ed25519(signature) => {
-                ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key))
+        match (self, public_key) {
+            (Self::ED25519(signature), PublicKey::ED25519(pulic_key)) => {
+                ed25519_verify(&sp_core::ed25519::Signature::from_raw(signature.to_bytes()), data.as_ref(), &Ed25519Public(pulic_key.0.clone()))
             }
+            _ => unimplemented!()
         }
     }
 }
@@ -33,6 +34,6 @@ mod tests {
     #[test]
     fn test_dummy_verificator() {
         let signature = DummySignature {};
-        signature.verify(b"data", PublicKey([0; 32]));
+        signature.verify(b"data", PublicKey::ED25519([0; 32].into()));
     }
 }
