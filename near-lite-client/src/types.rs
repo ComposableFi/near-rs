@@ -4,8 +4,7 @@ use sp_std::vec::Vec;
 
 use crate::{block_validation::Digest, error::NearLiteClientError};
 use borsh::{BorshDeserialize, BorshSerialize};
-use near_primitives::hash::{CryptoHash};
-use near_crypto::PublicKey;
+use near_primitives::{hash::{CryptoHash}, merkle::MerklePathItem, views::validator_stake_view::ValidatorStakeView};
 
 pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 #[derive(Debug)]
@@ -13,13 +12,7 @@ pub struct ConversionError(pub String);
 
 pub type BlockHeight = u64;
 pub type AccountId = String;
-pub type Balance = u128;
 pub type Gas = u64;
-
-pub type MerkleHash = CryptoHash;
-
-#[derive(Debug, Clone, BorshDeserialize)]
-pub struct MerklePath(pub Vec<MerklePathItem>);
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
@@ -65,22 +58,6 @@ pub struct BlockHeaderInnerLiteViewFinal {
     pub block_merkle_root: CryptoHash,
 }
 
-#[derive(Debug, BorshDeserialize, BorshSerialize)]
-pub enum ApprovalInner {
-    Endorsement(CryptoHash),
-    Skip(BlockHeight),
-}
-
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
-pub enum ValidatorStakeView {
-    V1(ValidatorStakeViewV1),
-}
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
-pub struct ValidatorStakeViewV1 {
-    pub account_id: AccountId,
-    pub public_key: PublicKey,
-    pub stake: Balance,
-}
 
 #[derive(Debug, Clone, BorshDeserialize)]
 pub struct ExecutionOutcomeView {
@@ -107,27 +84,6 @@ pub struct OutcomeProof {
     pub block_hash: CryptoHash,
     pub id: CryptoHash,
     pub outcome: ExecutionOutcomeView,
-}
-
-#[cfg_attr(feature = "deepsize_feature", derive(deepsize::DeepSizeOf))]
-#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
-pub enum Direction {
-    Left,
-    Right,
-}
-
-impl ValidatorStakeView {
-    pub fn into_validator_stake(self) -> ValidatorStakeViewV1 {
-        match self {
-            Self::V1(inner) => inner,
-        }
-    }
-}
-#[cfg_attr(feature = "deepsize_feature", derive(deepsize::DeepSizeOf))]
-#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
-pub struct MerklePathItem {
-    pub hash: MerkleHash,
-    pub direction: Direction,
 }
 
 impl LightClientBlockView {

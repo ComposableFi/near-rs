@@ -2,7 +2,7 @@ use near_lite_relayer::blockchain_connector::{BlockchainConnector, NearNetwork};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use near_lite_client::{
-     LightClient, MerklePath, OutcomeProof, StateTransitionVerificator,
+     LightClient, OutcomeProof, StateTransitionVerificator,
     TrustedCheckpoint,
 };
 use near_primitives::hash::CryptoHash;
@@ -63,14 +63,9 @@ async fn both_relayer_and_lite_client_validate_tx() {
                 )
                 .unwrap();
 
-                let outcome_root_proof = MerklePath::try_from_slice(
+                let outcome_root_proof = 
                     tx_light_client_proof
-                        .outcome_root_proof
-                        .try_to_vec()
-                        .unwrap()
-                        .as_ref(),
-                )
-                .unwrap();
+                        .outcome_root_proof;
 
                 let outcome_proof = OutcomeProof::try_from_slice(
                     tx_light_client_proof

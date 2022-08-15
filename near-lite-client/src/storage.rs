@@ -1,7 +1,7 @@
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-use crate::types::{LightClientBlockView, ValidatorStakeView};
-use near_primitives::hash::CryptoHash;
+use crate::types::{LightClientBlockView};
+use near_primitives::{hash::CryptoHash, views::validator_stake_view::ValidatorStakeView};
 
 
 pub trait StateStorage {

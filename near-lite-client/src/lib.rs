@@ -34,14 +34,13 @@ pub use block_validation::{Digest, SubstrateDigest};
 pub use checkpoint::TrustedCheckpoint;
 pub use client::LightClient;
 pub use storage::StateStorage;
-pub use types::{LightClientBlockView, MerklePath, OutcomeProof, ValidatorStakeView,
+pub use types::{LightClientBlockView, OutcomeProof,
 };
 pub use verifier::StateTransitionVerificator;
 
 pub mod prelude {
     pub use super::{
-        Digest, LightClient, LightClientBlockView, MerklePath, OutcomeProof, 
+        Digest, LightClient, LightClientBlockView, OutcomeProof, 
         StateStorage, StateTransitionVerificator, SubstrateDigest, TrustedCheckpoint,
-        ValidatorStakeView,
     };
 }

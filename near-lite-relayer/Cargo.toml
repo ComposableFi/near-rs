@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 borsh = "0.9.3"
 log = "0.4.16"
-near-crypto = "0.12.0"
-near-primitives = "0.12.0"
+near-crypto = { git = "https://github.com/ComposableFi/nearcore", rev = "cd6d0bfc6127dd54483b9a90d0018457d738bcee", package = "near-crypto"}
+near-primitives = { git = "https://github.com/ComposableFi/nearcore", rev = "cd6d0bfc6127dd54483b9a90d0018457d738bcee", package = "near-primitives"}
 near-sdk = { git = "https://github.com/near/near-sdk-rs", branch = "master"}
 serde = { version = "1", features = ["derive"] }
 serde-aux = "3.0.1"

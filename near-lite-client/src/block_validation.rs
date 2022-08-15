@@ -2,11 +2,11 @@ use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
     types::{
-        ApprovalInner, LightClientBlockView, LiteClientResult, ValidatorStakeView,
+         LightClientBlockView, LiteClientResult,
     },
 };
 
-use near_primitives::hash::CryptoHash;
+use near_primitives::{hash::CryptoHash, views::validator_stake_view::ValidatorStakeView, block_header::ApprovalInner};
 use borsh::BorshSerialize;
 use sp_io::hashing::sha2_256;
 
@@ -64,7 +64,7 @@ pub fn validate_light_block<D: Digest>(
         .zip(epoch_block_producers.iter())
     {
         let bp_stake_view = block_producer.clone().into_validator_stake();
-        let bp_stake = bp_stake_view.stake;
+        let bp_stake = bp_stake_view.stake();
         total_stake += bp_stake;
 
         if maybe_signature.is_none() {
@@ -73,7 +73,7 @@ pub fn validate_light_block<D: Digest>(
 
         approved_stake += bp_stake;
 
-        let validator_public_key = bp_stake_view.public_key.clone();
+        let validator_public_key = bp_stake_view.public_key().clone();
         if !maybe_signature
             .as_ref()
             .unwrap()

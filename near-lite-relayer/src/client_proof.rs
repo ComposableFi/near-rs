@@ -7,11 +7,10 @@ use near_crypto::Signature;
 use near_primitives::{
     hash::CryptoHash,
     merkle::MerklePathItem,
-    types::{AccountId, Balance, Gas},
+    types::{AccountId,  Gas},
     views::{
         validator_stake_view::ValidatorStakeView,
-        BlockHeaderInnerLiteView as NearBlockHeaderInnerLiteView, ExecutionOutcomeView,
-        ExecutionStatusView, LightClientBlockView as NearLightClientBlockView,
+        BlockHeaderInnerLiteView as NearBlockHeaderInnerLiteView, ExecutionOutcomeView, LightClientBlockView as NearLightClientBlockView,
     },
 };
 
