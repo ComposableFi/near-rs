@@ -1,7 +1,7 @@
-use crate::{
-    block_validation::Digest,
-    types::{Direction, LiteClientResult, MerkleHash, MerklePathItem},
+use crate::LiteClientResult;
+use near_primitives_wasm_friendly::{Direction, MerkleHash, MerklePathItem,
 };
+use near_primitives_wasm_friendly::Digest;
 use borsh::BorshSerialize;
 use sp_std::vec::Vec;
 

@@ -1,6 +1,6 @@
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-use crate::types::{CryptoHash, LightClientBlockView, ValidatorStakeView};
+use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, ValidatorStakeView};
 
 pub trait StateStorage {
     fn get_head(&self) -> &LightClientBlockView;

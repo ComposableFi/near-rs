@@ -1,4 +1,4 @@
-use crate::types::ConversionError;
+use near_primitives_wasm_friendly::ConversionError;
 use borsh::maybestd::io::Error as BorshError;
 
 #[derive(Debug)]

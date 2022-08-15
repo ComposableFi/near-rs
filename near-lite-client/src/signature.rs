@@ -1,4 +1,4 @@
-use crate::types::{PublicKey, Signature};
+use near_primitives_wasm_friendly::{PublicKey, Signature};
 use sp_core::ed25519::Public as Ed25519Public;
 use sp_io::crypto::ed25519_verify;
 

@@ -1,11 +1,14 @@
+use near_primitives_wasm_friendly::Digest;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
-    signature::SignatureVerification,
-    types::{
-        ApprovalInner, CryptoHash, LightClientBlockView, LiteClientResult, ValidatorStakeView,
-    },
+    LiteClientResult
 };
+
+use near_primitives_wasm_friendly::{
+    ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView,
+};
+
 
 use borsh::BorshSerialize;
 use sp_io::hashing::sha2_256;
@@ -18,6 +21,8 @@ pub fn validate_light_block<D: Digest>(
     block_view: &LightClientBlockView,
     epoch_block_producers_map: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<bool> {
+    use crate::signature::SignatureVerification;
+
     //The light client updates its head with the information from LightClientBlockView iff:
 
     // 1. The height of the block is higher than the height of the current head;
@@ -123,9 +128,6 @@ pub(crate) fn next_block_hash<D: Digest>(
         .as_slice()
         .try_into()
         .expect("Could not hash the next block")
-}
-pub trait Digest {
-    fn digest(data: impl AsRef<[u8]>) -> Vec<u8>;
 }
 
 pub struct SubstrateDigest;

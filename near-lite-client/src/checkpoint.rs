@@ -5,7 +5,7 @@
 //! there's also the possiblity to feed the client with a checkpoint. A checkpoint
 //! is a state of the chain that's considered **valid**.
 
-use crate::types::LightClientBlockView;
+use near_primitives_wasm_friendly::LightClientBlockView;
 
 pub struct TrustedCheckpoint(pub LightClientBlockView);
 

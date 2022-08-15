@@ -1,11 +1,12 @@
-use borsh::maybestd::{io::Write, string::String};
-use sp_std::vec::Vec;
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::{block_validation::Digest, error::NearLiteClientError};
+use sp_std::prelude::*;
+
+use borsh::maybestd::{io::Write, string::String};
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
-pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 #[derive(Debug)]
 pub struct ConversionError(String);
 #[derive(Debug, Clone)]
@@ -14,6 +15,10 @@ pub struct PublicKey(pub [u8; 32]);
 #[derive(Debug, Clone)]
 pub enum Signature {
     Ed25519(Ed25519Signature),
+}
+
+pub trait Digest {
+    fn digest(data: impl AsRef<[u8]>) -> Vec<u8>;
 }
 
 #[derive(
@@ -214,7 +219,6 @@ impl LightClientBlockView {
             self.prev_block_hash,
         )
     }
-    #[cfg(test)]
     pub fn new_for_test() -> Self {
         Self {
             prev_block_hash: CryptoHash([0; 32]),
@@ -258,7 +262,6 @@ fn current_block_hash<D: Digest>(
 }
 
 impl BlockHeaderInnerLiteView {
-    #[cfg(test)]
     pub fn new_for_test() -> Self {
         Self {
             height: 1,
@@ -325,7 +328,9 @@ impl BorshDeserialize for PublicKey {
 }
 #[cfg(test)]
 mod tests {
-    use std::{io, str::FromStr};
+    use std::io;
+    use sp_std::{vec, str::FromStr};
+
 
     use super::*;
 

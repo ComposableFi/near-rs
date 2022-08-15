@@ -4,10 +4,10 @@ use crate::{
     block_validation::SubstrateDigest,
     checkpoint::TrustedCheckpoint,
     storage::{DummyStateStorage, StateStorage},
-    types::{CryptoHash, LightClientBlockView, ValidatorStakeView},
     verifier::StateTransitionVerificator,
 };
 
+use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, ValidatorStakeView};
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
@@ -50,7 +50,7 @@ impl StateStorage for LightClient {
 
     fn get_epoch_block_producers(
         &self,
-    ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+    ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
         self.state_storage.get_epoch_block_producers()
     }
 
@@ -69,7 +69,7 @@ mod tests {
     use crate::{
         block_validation::Sha256Digest,
         storage::{DummyStateStorage, StateStorage},
-        types::LiteClientResult,
+        LiteClientResult,
         verifier::StateTransitionVerificator,
     };
 
@@ -105,7 +105,7 @@ mod tests {
 
         fn get_epoch_block_producers(
             &self,
-        ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+        ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
             todo!()
         }
 

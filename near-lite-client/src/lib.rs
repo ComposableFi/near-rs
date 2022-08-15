@@ -27,21 +27,24 @@ mod error;
 mod merkle_tree;
 mod signature;
 mod storage;
-mod types;
 mod verifier;
 
-pub use block_validation::{Digest, SubstrateDigest};
+pub use block_validation::{SubstrateDigest};
 pub use checkpoint::TrustedCheckpoint;
 pub use client::LightClient;
 pub use storage::StateStorage;
-pub use types::{
+pub use near_primitives_wasm_friendly::{
     CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
 };
 pub use verifier::StateTransitionVerificator;
 
+use crate::{ error::NearLiteClientError};
+
+pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
+
 pub mod prelude {
     pub use super::{
-        CryptoHash, Digest, LightClient, LightClientBlockView, MerklePath, OutcomeProof, Signature,
+        CryptoHash, LightClient, LightClientBlockView, MerklePath, OutcomeProof, Signature,
         StateStorage, StateTransitionVerificator, SubstrateDigest, TrustedCheckpoint,
         ValidatorStakeView,
     };

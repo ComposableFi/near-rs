@@ -1,12 +1,13 @@
 use crate::{
-    block_validation::{validate_light_block, Digest},
+    block_validation::{validate_light_block},
     merkle_tree::compute_root_from_path,
-    storage::StateStorage,
-    types::{
-        CryptoHash, ExecutionOutcomeView, LightClientBlockView, LiteClientResult, MerklePath,
-        OutcomeProof,
-    },
+    storage::StateStorage, LiteClientResult,
 };
+use near_primitives_wasm_friendly::{
+    CryptoHash, ExecutionOutcomeView, LightClientBlockView,  MerklePath,
+    OutcomeProof,
+};
+use near_primitives_wasm_friendly::Digest;
 use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
@@ -128,94 +129,23 @@ fn calculate_merklelization_hashes<D: Digest>(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use near_primitives_wasm_friendly::{MerklePathItem, ValidatorStakeView, Direction};
     use crate::{
         block_validation::SubstrateDigest,
-        types::{
-            BlockHeaderInnerLiteView, MerklePathItem, PublicKey, Signature, ValidatorStakeView,
-            ValidatorStakeViewV1,
-        },
+        
     };
     use borsh::BorshDeserialize;
-    use near_crypto::Signature as NearSignature;
     use near_primitives::{
-        hash::CryptoHash as NearCryptoHash,
         views::{
-            validator_stake_view::ValidatorStakeView as NearValidatorStakeView,
-            BlockHeaderInnerLiteView as NearBlockHeaderInnerLiteView,
             LightClientBlockView as NearLightClientBlockView,
         },
     };
-    use sp_core::ed25519::Signature as Ed25519Signature;
 
     use std::{collections::BTreeMap, io};
     #[derive(Debug, serde::Deserialize)]
     struct ResultFromRpc {
         pub result: NearLightClientBlockView,
-    }
-    impl From<NearCryptoHash> for CryptoHash {
-        fn from(hash: NearCryptoHash) -> Self {
-            Self(hash.0)
-        }
-    }
-
-    impl From<NearBlockHeaderInnerLiteView> for BlockHeaderInnerLiteView {
-        fn from(block: NearBlockHeaderInnerLiteView) -> Self {
-            Self {
-                height: block.height,
-                epoch_id: block.epoch_id.into(),
-                next_epoch_id: block.next_epoch_id.into(),
-                prev_state_root: block.prev_state_root.into(),
-                outcome_root: block.outcome_root.into(),
-                timestamp: block.timestamp,
-                timestamp_nanosec: block.timestamp_nanosec,
-                next_bp_hash: block.next_bp_hash.into(),
-                block_merkle_root: block.block_merkle_root.into(),
-            }
-        }
-    }
-
-    impl From<NearLightClientBlockView> for LightClientBlockView {
-        fn from(near: NearLightClientBlockView) -> Self {
-            Self {
-                prev_block_hash: near.prev_block_hash.into(),
-                next_block_inner_hash: near.next_block_inner_hash.into(),
-                inner_lite: near.inner_lite.into(),
-                inner_rest_hash: near.inner_rest_hash.into(),
-                next_bps: near.next_bps.map(|validator_stake_views| {
-                    validator_stake_views
-                        .into_iter()
-                        .map(ValidatorStakeView::from)
-                        .collect()
-                }),
-                approvals_after_next: near
-                    .approvals_after_next
-                    .into_iter()
-                    .map(|x| x.map(Signature::from))
-                    .collect(),
-            }
-        }
-    }
-
-    impl From<NearSignature> for Signature {
-        fn from(signature: NearSignature) -> Self {
-            match signature {
-                NearSignature::ED25519(inner_signature) => {
-                    Self::Ed25519(Ed25519Signature::try_from(inner_signature.as_ref()).unwrap())
-                }
-                _ => unimplemented!("Substrate runtime only supports ED25519"),
-            }
-        }
-    }
-
-    impl From<NearValidatorStakeView> for ValidatorStakeView {
-        fn from(stake_view: NearValidatorStakeView) -> Self {
-            let validator_stake = stake_view.into_validator_stake();
-            Self::V1(ValidatorStakeViewV1 {
-                account_id: validator_stake.account_id().as_str().to_owned(),
-                public_key: PublicKey::try_from(validator_stake.public_key().key_data()).unwrap(),
-                stake: validator_stake.stake(),
-            })
-        }
     }
 
     pub fn get_client_block_view(
@@ -277,7 +207,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Left,
+                direction: Direction::Left,
             },
             MerklePathItem {
                 hash: CryptoHash::try_from(
@@ -287,7 +217,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Left,
+                direction: Direction::Left,
             },
         ];
         let item_hash = CryptoHash::try_from(
@@ -325,7 +255,7 @@ mod test {
 
             fn get_epoch_block_producers(
                 &self,
-            ) -> &std::collections::BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>>
+            ) -> &std::collections::BTreeMap<CryptoHash, Vec<ValidatorStakeView>>
             {
                 todo!()
             }
@@ -359,7 +289,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Right,
+                direction: Direction::Right,
             },
             MerklePathItem {
                 hash: CryptoHash::try_from(
@@ -369,7 +299,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Right,
+                direction: Direction::Right,
             },
             MerklePathItem {
                 hash: CryptoHash::try_from(
@@ -379,7 +309,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Right,
+                direction: Direction::Right,
             },
         ];
 
@@ -392,7 +322,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Left,
+                direction: Direction::Left,
             },
             MerklePathItem {
                 hash: CryptoHash::try_from(
@@ -402,7 +332,7 @@ mod test {
                         .as_ref(),
                 )
                 .unwrap(),
-                direction: crate::types::Direction::Left,
+                direction: Direction::Left,
             },
         ];
 
@@ -481,7 +411,7 @@ mod test {
 
             fn get_epoch_block_producers(
                 &self,
-            ) -> &BTreeMap<CryptoHash, Vec<crate::types::ValidatorStakeView>> {
+            ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
                 &self.block_producers_per_epoch
             }
 
