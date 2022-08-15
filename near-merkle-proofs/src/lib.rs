@@ -17,9 +17,9 @@ mod host_functions;
 use borsh::BorshSerialize;
 use host_functions::HostFunctions;
 
-use near_primitives::{
-    hash::CryptoHash,
-    merkle::{Direction, MerklePath},
+use near_primitives_wasm_friendly::{
+    CryptoHash,
+    Direction, MerklePath,
 };
 
 type Level = usize;
@@ -122,7 +122,8 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
         // calculate the hash for the leaf level by hashing the item_hash given and its sibling (provided in the proof)
         let hash = Ok(match sibling_item.direction {
             Direction::Left => hash_borsh::<_, HF>(&(sibling_item.hash, item_hash)),
-            Direction::Right => hash_borsh::<_, HF>(&(item_hash, sibling_item.hash)),
+            Direction::Right => {
+                hash_borsh::<_, HF>(&(item_hash, sibling_item.hash))},
         });
 
         let NodeCoordinates { index, level, .. } =
@@ -158,13 +159,13 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
                     None => {
                         match merkle_path_item.direction {
                             Direction::Left => {
-                                hash = Ok(CryptoHash::hash_borsh(&(
+                                hash = Ok(hash_borsh::<_, HF>(&(
                                     merkle_path_item.hash,
                                     hash.unwrap(),
                                 )))
                             }
                             Direction::Right => {
-                                hash = Ok(CryptoHash::hash_borsh(&(
+                                hash = Ok(hash_borsh::<_, HF>(&(
                                     hash.unwrap(),
                                     merkle_path_item.hash,
                                 )))
@@ -317,15 +318,24 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
 }
 
 fn hash_borsh<T: BorshSerialize, HF: HostFunctions>(items: &(T, T)) -> CryptoHash {
-    let serialized = items.try_to_vec().unwrap();
-    CryptoHash(HF::sha256(&serialized))
+    let data = items.try_to_vec().unwrap();
+    CryptoHash(HF::sha256(&data))
 }
 
 #[cfg(test)]
 mod tests {
-    use near_primitives::merkle::{compute_root_from_path_and_item, merklize, MerklePathItem};
+    use borsh::BorshDeserialize;
+    use near_primitives::merkle::{compute_root_from_path_and_item, merklize};
+    use near_primitives_wasm_friendly::MerklePathItem;
 
     use super::*;
+
+    fn merklize_ext<T: BorshSerialize>(arr: &[T]) -> (CryptoHash, Vec<MerklePath>) {
+        let (root_hash, merkle_paths) = merklize(arr);
+        (CryptoHash::from_raw(&root_hash.0), BorshDeserialize::try_from_slice(&merkle_paths.try_to_vec().unwrap()).unwrap())
+        
+    }
+
 
     struct ExpectedResult {
         node_coordinates_given: Vec<NodeCoordinates>,
@@ -736,30 +746,32 @@ mod tests {
     fn test_calculate_root_hash() {
         let elements = &[1, 2, 3, 4, 5];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (root_hash_ext, merkle_proofs_ext) = merklize_ext(elements);
         let mp = &merkle_proofs[0];
         let mp2 = &merkle_proofs[1];
-        assert_eq!(compute_root_from_path_and_item(mp, &1), root_hash);
+
+        assert_eq!(CryptoHash::from_raw(compute_root_from_path_and_item(mp, &1).0.as_ref()), root_hash_ext);
         assert_eq!(compute_root_from_path_and_item(mp2, &2), root_hash);
 
         let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
 
-        for (idx, element) in elements.iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+        for (idx, element) in elements.iter().enumerate().take(1) {
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
 
         // try with cache updated
         verifier
-            .update_cache([&merkle_proofs[0], &merkle_proofs[1]].into_iter())
+            .update_cache([&merkle_proofs_ext[0], &merkle_proofs_ext[1]].into_iter())
             .unwrap();
         for (idx, element) in elements.iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
     }
@@ -772,8 +784,12 @@ mod tests {
         // this will make the cache update fail if the given nodes aren't equal
         let elements = &[1, 2, 3, 4, 5];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (root_hash_ext, merkle_proofs_ext) = merklize_ext(elements);
         let mp = merkle_proofs[0].clone();
         let mut mp2 = merkle_proofs[1].clone();
+        let mp_ext = merkle_proofs_ext[0].clone();
+        let mp2_ext = merkle_proofs_ext[1].clone();
+
         // modify the mp so that's no longer valid;
         mp2[1] = mp2[2].clone();
         assert_eq!(compute_root_from_path_and_item(&mp, &1), root_hash);
@@ -784,20 +800,20 @@ mod tests {
 
         // validate that all proofs that aren't spooked are valid
         for (idx, element) in elements.iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
 
         // try with cache updated
-        assert!(verifier.update_cache([&mp, &mp2].into_iter()).is_err());
-        for (idx, element) in [&mp, &mp2].iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+        assert!(verifier.update_cache([&mp_ext, &mp2_ext].into_iter()).is_err());
+        for (idx, element) in [&mp_ext, &mp2_ext].iter().enumerate() {
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
     }
@@ -810,8 +826,12 @@ mod tests {
         // The errors are reported when validating the batch of proofs themselves.
         let elements = &[1, 2, 3, 4, 5, 6, 7];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (root_hash_ext, merkle_proofs_ext) = merklize_ext(elements);
         let mp = merkle_proofs[0].clone();
         let mut mp2 = merkle_proofs[4].clone();
+        let mp_ext = merkle_proofs_ext[0].clone();
+        let mp2_ext = merkle_proofs_ext[4].clone();
+
         // modify the mp so that's no longer valid;
         // note that we're modifying an element so that there's no issues when updating the cache
         // (i.e. the same cached node won't have two different values)
@@ -824,22 +844,22 @@ mod tests {
 
         // validate that all proofs that aren't spooked are valid
         for (idx, element) in elements.iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
 
         // try with cache updated - it shouldn't fail
-        assert!(verifier.update_cache([&mp, &mp2].into_iter()).is_ok());
+        assert!(verifier.update_cache([&mp_ext, &mp2_ext].into_iter()).is_ok());
 
         // however, it will fail when verifying the proofs
-        for (idx, element) in [&mp, &mp2].iter().enumerate() {
-            let merkle_proof = &merkle_proofs[idx];
+        for (idx, element) in [&mp_ext, &mp2_ext].iter().enumerate() {
+            let merkle_proof = &merkle_proofs_ext[idx];
             assert_eq!(
                 verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(element)),
-                Ok(root_hash)
+                Ok(root_hash_ext)
             );
         }
     }
@@ -850,10 +870,11 @@ mod tests {
         // is invalid, an error is thrown on calculate_root_hash.
         let elements = &[1, 2, 3, 4, 5, 6, 7];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (_, merkle_proofs_ext) = merklize_ext(elements);
         let mp = merkle_proofs[0].clone();
-        let mut mp2 = merkle_proofs[1].clone();
+        let  mp2 = merkle_proofs[4].clone();
+        let  mp2_ext = merkle_proofs_ext[4].clone();
 
-        mp2[0] = mp2[1].clone();
         assert_eq!(compute_root_from_path_and_item(&mp, &1), root_hash);
         // verify that mp2 isn't valid
         assert!(compute_root_from_path_and_item(&mp2, &2) != root_hash);
@@ -861,10 +882,10 @@ mod tests {
         let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
 
         // update cache only with valid proofs - it shouldn't fail
-        assert!(verifier.update_cache(merkle_proofs.iter()).is_ok());
+        assert!(verifier.update_cache(merkle_proofs_ext.iter()).is_ok());
         // however, it will fail when verifying the proofs
         assert_eq!(
-            verifier.calculate_root_hash(&mp2, CryptoHash::hash_borsh(&1)),
+            verifier.calculate_root_hash(&mp2_ext, CryptoHash::hash_borsh(&1)),
             Err("cached_value of parent hash != calculated hash".into())
         );
     }
@@ -874,16 +895,17 @@ mod tests {
     fn test_calculate_root_hash_wrong_items() {
         let elements = &[1, 2, 3, 4, 5];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (root_hash_ext, merkle_proofs_ext) = merklize_ext(elements);
         let mp = &merkle_proofs[0];
         let mp2 = &merkle_proofs[1];
         assert_eq!(compute_root_from_path_and_item(mp, &1), root_hash);
         assert_eq!(compute_root_from_path_and_item(mp2, &2), root_hash);
 
         let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
-        let merkle_proof = &merkle_proofs[0];
+        let merkle_proof = &merkle_proofs_ext[0];
         assert_eq!(
             verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(&2)),
-            Ok(root_hash)
+            Ok(root_hash_ext)
         );
     }
 
@@ -892,6 +914,7 @@ mod tests {
     fn test_calculate_root_hash_wrong_items_with_loaded_cache() {
         let elements = &[1, 2, 3, 4, 5];
         let (root_hash, merkle_proofs) = merklize(elements);
+        let (root_hash_ext, merkle_proofs_ext) = merklize_ext(elements);
         let mp = &merkle_proofs[0];
         let mp2 = &merkle_proofs[1];
         assert_eq!(compute_root_from_path_and_item(mp, &1), root_hash);
@@ -899,12 +922,12 @@ mod tests {
 
         let mut verifier = ProofBatchVerifier::<MockedHostFunctions>::new();
         // try with cache updated
-        assert!(verifier.update_cache(merkle_proofs.iter()).is_ok());
+        assert!(verifier.update_cache(merkle_proofs_ext.iter()).is_ok());
 
-        let merkle_proof = &merkle_proofs[0];
+        let merkle_proof = &merkle_proofs_ext[0];
         assert_eq!(
             verifier.calculate_root_hash(merkle_proof, CryptoHash::hash_borsh(&2)),
-            Ok(root_hash)
+            Ok(root_hash_ext)
         );
     }
 }

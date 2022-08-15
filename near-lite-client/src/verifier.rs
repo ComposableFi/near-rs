@@ -51,7 +51,7 @@ pub trait StateTransitionVerificator: StateStorage {
             compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
 
         let block_outcome_root = compute_root_from_path::<Self::D>(
-            &outcome_root_proof.0,
+            &outcome_root_proof,
             Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
                 .as_slice()
                 .try_into()
@@ -370,7 +370,7 @@ mod test {
         assert!(dummy_lite_client
             .validate_transaction(
                 &outcome_proof,
-                MerklePath(outcome_root_proof),
+                outcome_root_proof,
                 expected_block_outcome_root,
             )
             .unwrap());

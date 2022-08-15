@@ -2,7 +2,7 @@
 //! verbatim as much as possible. There has been some tweaks in order
 //! to make it no_std compatible.
 
-use near_primitives::hash::CryptoHash;
+use near_primitives_wasm_friendly::{CryptoHash, Digest};
 use no_std_compat as std;
 use std::{string::String, vec::Vec};
 
@@ -188,7 +188,7 @@ impl RawTrieNode {
 }
 
 /// Verifies proof of membership and non membership of state proofs.
-pub fn verify_state_proof(
+pub fn verify_state_proof<D: Digest>(
     key: &[u8],
     levels: &Vec<RawTrieNodeWithSize>,
     // when verifying proofs of non-membership, this value should be None
@@ -199,7 +199,7 @@ pub fn verify_state_proof(
     let mut hash_node = |node: &RawTrieNodeWithSize| {
         v.clear();
         node.encode_into(&mut v);
-        CryptoHash::hash_bytes(&v)
+        CryptoHash::from_raw(&D::digest(&v))
     };
     let mut hash = CryptoHash::default();
     let mut key = NibbleSlice::new(key);
@@ -292,6 +292,16 @@ mod tests {
 
     use core::str::FromStr;
 
+    use near_primitives::hash::{CryptoHash as NearCryptoHash};
+
+    struct Sha2Digest;
+    impl Digest for Sha2Digest {
+        fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
+            use sha2::{Digest};
+            sha2::Sha256::digest(data).to_vec()
+        }
+    }
+
     use super::*;
     #[test]
     fn verify_proof() {
@@ -309,15 +319,15 @@ mod tests {
         ].into_iter().map(|p| RawTrieNodeWithSize::decode(&hex::decode(p).unwrap()).unwrap()).collect::<Vec<_>>();
 
         let root_hash =
-            CryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap();
+            CryptoHash(NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap().try_into().unwrap());
 
-        assert!(verify_state_proof(
+        assert!(verify_state_proof::<Sha2Digest>(
             key.as_ref(),
             &raw_proof,
             Some(b"coin".as_ref()),
             root_hash
         ));
-        assert!(!verify_state_proof(
+        assert!(!verify_state_proof::<Sha2Digest>(
             key.as_ref(),
             &raw_proof,
             Some(b"coin_not_present".as_ref()),
@@ -334,9 +344,9 @@ mod tests {
         ].into_iter().map(|p| RawTrieNodeWithSize::decode(&hex::decode(p).unwrap()).unwrap()).collect::<Vec<_>>();
 
         let root_hash =
-            CryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap();
+            CryptoHash(NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap().try_into().unwrap());
 
-        assert!(verify_state_proof(
+        assert!(verify_state_proof::<Sha2Digest>(
             key.as_ref(),
             &raw_proof,
             None,

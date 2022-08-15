@@ -9,11 +9,12 @@ edition = "2021"
 borsh = { version = "0.9.3", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
+sha2 = {version = "0.10.2", default-features = false }
+
 
 
 [dev-dependencies]
 bs58 = "0.4.0"
-sha2 = "0.10.2"
 near-primitives = "0.12"
 serde = "1.0.136"
 near-crypto = "0.12.0"

@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+
 use sp_std::prelude::*;
 
 use borsh::maybestd::{io::Write, string::String};
@@ -22,9 +23,11 @@ pub trait Digest {
 }
 
 #[derive(
-    Debug, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
+    Debug, Default, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
 )]
 pub struct CryptoHash(pub [u8; 32]);
+
+
 
 impl Signature {
     const LEN: usize = 64;
@@ -58,6 +61,29 @@ impl TryFrom<&[u8]> for CryptoHash {
         Ok(CryptoHash(inner))
     }
 }
+use sha2::Digest as Sha2Digest;
+
+impl CryptoHash {
+
+    // copy from near primitives
+    pub fn hash_bytes(bytes: &[u8]) -> CryptoHash {
+        CryptoHash(sha2::Sha256::digest(bytes).into())
+    }
+    
+    pub fn hash_borsh<T: BorshSerialize>(value: &T) -> CryptoHash {
+        let serialized = value.try_to_vec().unwrap();
+        Self::hash_bytes(&serialized)
+    }
+
+    pub fn from_raw(raw: &[u8]) -> Self {
+        Self::try_from(raw).unwrap()
+    }
+    
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 
 impl AsRef<[u8]> for CryptoHash {
     fn as_ref(&self) -> &[u8] {
@@ -89,8 +115,7 @@ pub type Gas = u64;
 
 pub type MerkleHash = CryptoHash;
 
-#[derive(Debug, Clone, BorshDeserialize)]
-pub struct MerklePath(pub Vec<MerklePathItem>);
+pub type MerklePath =  Vec<MerklePathItem>;
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
@@ -225,8 +250,8 @@ impl LightClientBlockView {
             next_block_inner_hash: CryptoHash([0; 32]),
             inner_lite: BlockHeaderInnerLiteView::new_for_test(),
             inner_rest_hash: CryptoHash([0; 32]),
-            next_bps: Some(vec![]),
-            approvals_after_next: vec![],
+            next_bps: Some(Vec::new()),
+            approvals_after_next: Vec::new(),
         }
     }
 }

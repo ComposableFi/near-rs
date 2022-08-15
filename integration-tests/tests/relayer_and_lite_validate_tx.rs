@@ -21,8 +21,6 @@ async fn both_relayer_and_lite_client_validate_tx() {
         .get_almost_latest_finalized_block_hash_and_height()
         .unwrap();
 
-    dbg!(bs58::encode(almost_last_block_hash.try_to_vec().unwrap()).into_string());
-
     let light_client_block_view = blockchain_connector
         .get_light_client_block_view(almost_last_block_hash)
         .unwrap();
