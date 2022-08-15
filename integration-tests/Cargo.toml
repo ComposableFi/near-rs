@@ -10,7 +10,7 @@ bs58 = "0.4.0"
 borsh = "0.9.3"
 env_logger = "0.9.0"
 log = "0.4.16"
-near-primitives = "0.12"
+near-primitives = { git = "https://github.com/ComposableFi/nearcore", rev = "cd6d0bfc6127dd54483b9a90d0018457d738bcee", package = "near-primitives"}
 near-lite-client = {path = "../near-lite-client"}
 near-lite-relayer = {path = "../near-lite-relayer"}
 tokio = { version = "1.17.0", features = ["full"] }

@@ -2,9 +2,10 @@ use near_lite_relayer::blockchain_connector::{BlockchainConnector, NearNetwork};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use near_lite_client::{
-    CryptoHash, LightClient, MerklePath, OutcomeProof, StateTransitionVerificator,
+     LightClient, MerklePath, OutcomeProof, StateTransitionVerificator,
     TrustedCheckpoint,
 };
+use near_primitives::hash::CryptoHash;
 
 /// ## Both Relayer and Lite Client - testing tx validation
 ///
