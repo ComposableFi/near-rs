@@ -1,3 +1,4 @@
+use near_merkle_proofs::HostFunctions;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{
@@ -48,9 +49,7 @@ impl StateStorage for LightClient {
         self.state_storage.set_new_head(new_head)
     }
 
-    fn get_epoch_block_producers(
-        &self,
-    ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
+    fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
         self.state_storage.get_epoch_block_producers()
     }
 
@@ -59,8 +58,18 @@ impl StateStorage for LightClient {
     }
 }
 
+pub struct NearHostFunctions;
+
+impl HostFunctions for NearHostFunctions {
+    fn sha256(data: &[u8]) -> [u8; 32] {
+        use sha2::Digest;
+        sha2::Sha256::digest(data).try_into().unwrap()
+    }
+}
+
 impl StateTransitionVerificator for LightClient {
     type D = SubstrateDigest;
+    type HF = NearHostFunctions;
 }
 
 #[cfg(test)]
@@ -69,8 +78,9 @@ mod tests {
     use crate::{
         block_validation::Sha256Digest,
         storage::{DummyStateStorage, StateStorage},
-        LiteClientResult,
+        test_utils::MockedHostFunctions,
         verifier::StateTransitionVerificator,
+        LiteClientResult,
     };
 
     struct MockLightClient {
@@ -103,9 +113,7 @@ mod tests {
             self.storage.set_new_head(new_head)
         }
 
-        fn get_epoch_block_producers(
-            &self,
-        ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
+        fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
             todo!()
         }
 
@@ -120,6 +128,7 @@ mod tests {
 
     impl StateTransitionVerificator for MockLightClient {
         type D = Sha256Digest;
+        type HF = MockedHostFunctions;
 
         fn validate_and_update_head(
             &mut self,

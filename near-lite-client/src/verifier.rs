@@ -1,18 +1,18 @@
 use crate::{
-    block_validation::{validate_light_block},
-    merkle_tree::compute_root_from_path,
+    block_validation::validate_light_block, merkle_tree::compute_root_from_path,
     storage::StateStorage, LiteClientResult,
 };
-use near_primitives_wasm_friendly::{
-    CryptoHash, ExecutionOutcomeView, LightClientBlockView,  MerklePath,
-    OutcomeProof,
-};
+use near_merkle_proofs::{HostFunctions, ProofBatchVerifier};
 use near_primitives_wasm_friendly::Digest;
+use near_primitives_wasm_friendly::{
+    CryptoHash, ExecutionOutcomeView, LightClientBlockView, MerklePath, OutcomeProof,
+};
 use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
 pub trait StateTransitionVerificator: StateStorage {
     type D: Digest;
+    type HF: HostFunctions;
 
     fn validate_and_update_head(
         &mut self,
@@ -59,6 +59,75 @@ pub trait StateTransitionVerificator: StateStorage {
         )?;
 
         Ok(expected_block_outcome_root == block_outcome_root)
+    }
+
+    fn validate_transactions(
+        &self,
+        outcome_proofs: Vec<OutcomeProof>,
+        outcome_root_proofs: Vec<MerklePath>,
+        expected_block_outcome_root: CryptoHash,
+    ) -> LiteClientResult<bool> {
+        if outcome_proofs.len() != outcome_root_proofs.len() {
+            return Ok(false);
+        }
+        if outcome_proofs.len() == 0 {
+            // TODO: validate this
+            return Ok(false);
+        }
+
+        let mut execution_outcome_hashes = vec![];
+        for outcome_proof in &outcome_proofs {
+            execution_outcome_hashes.push(calculate_execution_outcome_hash::<Self::D>(
+                &outcome_proof.outcome,
+                outcome_proof.id,
+            ));
+        }
+
+        let mut proof_verifier_shard_outcome = ProofBatchVerifier::<Self::HF>::new();
+        let outcome_proofs_iter = outcome_proofs.iter().map(|op| &op.proof);
+        proof_verifier_shard_outcome.update_cache(outcome_proofs_iter.clone())?;
+
+        let mut shard_outcome_roots = vec![];
+        for (outcome_root_proof, execution_outcome_hash) in
+            outcome_proofs_iter.zip(execution_outcome_hashes)
+        {
+            shard_outcome_roots.push(
+                proof_verifier_shard_outcome
+                    .calculate_root_hash(&outcome_root_proof, execution_outcome_hash)?,
+            );
+        }
+
+        // confirm that all shard outcome roots are the same
+        let shard_outcome_root_sample = &shard_outcome_roots[0];
+        if shard_outcome_roots
+            .iter()
+            .skip(1)
+            .any(|hash| hash != shard_outcome_root_sample)
+        {
+            return Ok(false);
+        }
+
+        let mut block_outcome_root_verifier = ProofBatchVerifier::<Self::HF>::new();
+        let outcome_root_proofs_iter = outcome_root_proofs.iter();
+        block_outcome_root_verifier.update_cache(outcome_root_proofs_iter.clone())?;
+
+        for (outcome_root_proof, shard_outcome_root) in
+            outcome_root_proofs_iter.zip(shard_outcome_roots)
+        {
+            let block_outcome_root = block_outcome_root_verifier.calculate_root_hash(
+                &outcome_root_proof,
+                Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
+                    .as_slice()
+                    .try_into()
+                    .unwrap(),
+            )?;
+
+            if expected_block_outcome_root != block_outcome_root {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 }
 
@@ -130,17 +199,10 @@ fn calculate_merklelization_hashes<D: Digest>(
 mod test {
     use super::*;
 
-    use near_primitives_wasm_friendly::{MerklePathItem, ValidatorStakeView, Direction};
-    use crate::{
-        block_validation::SubstrateDigest,
-        
-    };
+    use crate::{block_validation::SubstrateDigest, test_utils::MockedHostFunctions};
     use borsh::BorshDeserialize;
-    use near_primitives::{
-        views::{
-            LightClientBlockView as NearLightClientBlockView,
-        },
-    };
+    use near_primitives::views::LightClientBlockView as NearLightClientBlockView;
+    use near_primitives_wasm_friendly::{Direction, MerklePathItem, ValidatorStakeView};
 
     use std::{collections::BTreeMap, io};
     #[derive(Debug, serde::Deserialize)]
@@ -255,8 +317,7 @@ mod test {
 
             fn get_epoch_block_producers(
                 &self,
-            ) -> &std::collections::BTreeMap<CryptoHash, Vec<ValidatorStakeView>>
-            {
+            ) -> &std::collections::BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
                 todo!()
             }
 
@@ -271,6 +332,7 @@ mod test {
 
         impl StateTransitionVerificator for VeryDummyLiteClient {
             type D = SubstrateDigest;
+            type HF = MockedHostFunctions;
         }
 
         let tx_hash = CryptoHash::try_from(
@@ -409,9 +471,7 @@ mod test {
                 self.head = new_head;
             }
 
-            fn get_epoch_block_producers(
-                &self,
-            ) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
+            fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
                 &self.block_producers_per_epoch
             }
 
@@ -426,6 +486,7 @@ mod test {
 
         impl StateTransitionVerificator for LessDummyLiteClient {
             type D = SubstrateDigest;
+            type HF = MockedHostFunctions;
         }
 
         const CLIENT_RESPONSE_PREVIOUS_EPOCH: &str = r#"
