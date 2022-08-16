@@ -29,6 +29,10 @@ const BRANCH_NODE_NO_VALUE: u8 = 1;
 const BRANCH_NODE_WITH_VALUE: u8 = 2;
 const EXTENSION_NODE: u8 = 3;
 
+/// ReadBytesExtLittleEndian parses anythign that implements `Read` and converts
+/// the data into primitives such as u8, u16, u32.
+/// ## Assumption
+/// ReadBytesExtLittleEndian assumes data coming in LittleEndian
 trait ReadBytesExtLittleEndian: Read {
     fn read_u8(&mut self) -> Result<u8, String> {
         let mut buff = [0u8; 1];
