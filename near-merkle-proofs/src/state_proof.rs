@@ -8,8 +8,6 @@ use std::{string::String, vec::Vec};
 
 use core2::io::{Cursor, Read};
 
-use byteorder::{LittleEndian, ReadBytesExt};
-
 use crate::nibble::NibbleSlice;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -31,11 +29,37 @@ const BRANCH_NODE_NO_VALUE: u8 = 1;
 const BRANCH_NODE_WITH_VALUE: u8 = 2;
 const EXTENSION_NODE: u8 = 3;
 
+trait ReadBytesExtLittleEndian: Read {
+    fn read_u8(&mut self) -> Result<u8, String> {
+        let mut buff = [0u8; 1];
+        self.take(1)
+            .read_exact(&mut buff)
+            .map_err(|e| String::from("Could not read two bytes"))?;
+        Ok(u8::from_le_bytes(buff))
+    }
+    fn read_u16(&mut self) -> Result<u16, String> {
+        let mut buff = [0u8; 2];
+        self.take(2)
+            .read_exact(&mut buff)
+            .map_err(|e| String::from("Could not read two bytes"))?;
+        Ok(u16::from_le_bytes(buff))
+    }
+    fn read_u32(&mut self) -> Result<u32, String> {
+        let mut buff = [0u8; 4];
+        self.take(4)
+            .read_exact(&mut buff)
+            .map_err(|e| String::from("Could not read two bytes"))?;
+        Ok(u32::from_le_bytes(buff))
+    }
+}
+
+impl<T: core::convert::AsRef<[u8]>> ReadBytesExtLittleEndian for Cursor<T> {}
+
 // ported from NEAR CORE: decodes bytes into children nods of the state trie
 fn decode_children(cursor: &mut Cursor<&[u8]>) -> Result<[Option<CryptoHash>; 16], String> {
     let mut children: [Option<CryptoHash>; 16] = Default::default();
     let bitmap = cursor
-        .read_u16::<LittleEndian>()
+        .read_u16()
         .map_err(|_| String::from("decoding error"))?;
     let mut pos = 1;
     for child in &mut children {
@@ -124,7 +148,7 @@ impl RawTrieNode {
         {
             LEAF_NODE => {
                 let key_length = cursor
-                    .read_u32::<LittleEndian>()
+                    .read_u32()
                     .map_err(|_| String::from("decoding error"))?;
                 let mut key = (0..key_length as u8).into_iter().collect::<Vec<_>>();
                 cursor
@@ -132,7 +156,7 @@ impl RawTrieNode {
                     .map(|err| err.into())
                     .map_err(|_| String::from("decoding error"))?;
                 let value_length = cursor
-                    .read_u32::<LittleEndian>()
+                    .read_u32()
                     .map_err(|_| String::from("decoding error"))?;
                 let mut arr = [0; 32];
                 cursor
@@ -147,7 +171,7 @@ impl RawTrieNode {
             }
             BRANCH_NODE_WITH_VALUE => {
                 let value_length = cursor
-                    .read_u32::<LittleEndian>()
+                    .read_u32()
                     .map_err(|_| String::from("decoding error"))?;
                 let mut arr = [0; 32];
                 cursor
@@ -162,7 +186,7 @@ impl RawTrieNode {
             }
             EXTENSION_NODE => {
                 let key_length = cursor
-                    .read_u32::<LittleEndian>()
+                    .read_u32()
                     .map_err(|_| String::from("decoding error"))?;
                 let mut key = (0..key_length as u8).into_iter().collect::<Vec<_>>();
                 cursor
@@ -292,12 +316,12 @@ mod tests {
 
     use core::str::FromStr;
 
-    use near_primitives::hash::{CryptoHash as NearCryptoHash};
+    use near_primitives::hash::CryptoHash as NearCryptoHash;
 
     struct Sha2Digest;
     impl Digest for Sha2Digest {
         fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
-            use sha2::{Digest};
+            use sha2::Digest;
             sha2::Sha256::digest(data).to_vec()
         }
     }
@@ -318,8 +342,12 @@ mod tests {
             "00010000003504000000b3a1984ba0b1d8ad7f9dc881dfd9c9dc78c76c647a7692fbbfd6fcdcb9d9a1216a00000000000000"
         ].into_iter().map(|p| RawTrieNodeWithSize::decode(&hex::decode(p).unwrap()).unwrap()).collect::<Vec<_>>();
 
-        let root_hash =
-            CryptoHash(NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap().try_into().unwrap());
+        let root_hash = CryptoHash(
+            NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV")
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        );
 
         assert!(verify_state_proof::<Sha2Digest>(
             key.as_ref(),
@@ -343,8 +371,12 @@ mod tests {
         let raw_proof = ["0301000000165a1e73ea8e3686db1c5938a8d22912c2e2936fe475d933c310c452cbfb4306ff5303000000000000"
         ].into_iter().map(|p| RawTrieNodeWithSize::decode(&hex::decode(p).unwrap()).unwrap()).collect::<Vec<_>>();
 
-        let root_hash =
-            CryptoHash(NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV").unwrap().try_into().unwrap());
+        let root_hash = CryptoHash(
+            NearCryptoHash::from_str("hvKZryexWm5CPgcvB3VKxKp1uRQWZnSDALLNa9raXJV")
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        );
 
         assert!(verify_state_proof::<Sha2Digest>(
             key.as_ref(),

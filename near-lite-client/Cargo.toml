@@ -14,6 +14,8 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 near-primitives-wasm-friendly = {path = "../near-primitives-wasm-friendly", default-features = false}
 near-merkle-proofs = { path = "../near-merkle-proofs", default-features = false }
 sha2 = { version = "0.10.2", default-features = false }
+no-std-compat = {version = "0.4.1", default-features = false }
+
 
 [dev-dependencies]
 bs58 = "0.4.0"
@@ -29,6 +31,7 @@ default = ["std"]
 std = [
     "borsh/std",
     "sp-io/std",
+    "sp-io/disable_panic_handler",
     "sp-core/std",
     "sp-std/std",
 ]
