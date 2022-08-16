@@ -10,7 +10,7 @@ borsh = {version = "0.9.3", default_features = false }
 no-std-compat = {version = "0.4.1", features = [ "alloc", "compat_hash" ] }
 elastic-array = {version = "0.11", default-features = false }
 core2 = {version = "0.3.2" }
-byteorder = {vesion = "1.4.3", default-features = false}
+byteorder = {vesion = "1.4.3"}
 near-primitives-wasm-friendly = {path = "../near-primitives-wasm-friendly", default-features = false }
 
 [dev-dependencies]
