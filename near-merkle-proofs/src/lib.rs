@@ -67,9 +67,8 @@ impl CachedNodes {
 				if let Some(cached_node) = self.inner.get(&(*level, *index)) {
 					match hash {
 						// given that the hash is cached, only check for a potential error
-						Some(hash) if hash != cached_node => {
-							return Err("cached_node != hash".into())
-						},
+						Some(hash) if hash != cached_node =>
+							return Err("cached_node != hash".into()),
 						_ => return Ok(()),
 					}
 				}

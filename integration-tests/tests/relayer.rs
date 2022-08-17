@@ -49,7 +49,7 @@ async fn relayer_fetches_data_and_does_simple_validation() {
 				let light_client_block_view =
 					blockchain_connector.get_light_client_block_view(current_block_hash).unwrap();
 
-				assert!(lite_client.validate_and_update_head(&light_client_block_view.into()));
+				assert!(lite_client.validate_head(&light_client_block_view.into()));
 				counter += 1;
 				if counter == 3 {
 					break

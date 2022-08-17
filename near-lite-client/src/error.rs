@@ -1,6 +1,6 @@
 use borsh::maybestd::io::Error as BorshError;
 use near_primitives_wasm_friendly::ConversionError;
-use no_std_compat::string::String;
+use alloc::string::String;
 
 #[derive(Debug)]
 pub enum NearLiteClientError {

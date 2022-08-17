@@ -60,7 +60,7 @@ impl LightClientState {
 
 	// QUESTION: do we also want to pass the block hash received from the RPC?
 	// it's not on the spec, but it's an extra validation
-	pub fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {
+	pub fn validate_head(&mut self, block_view: &LightClientBlockView) -> bool {
 		log::trace!(
 			"Validating block view for height={} on epoch={}",
 			block_view.inner_lite.height,
@@ -1675,7 +1675,7 @@ mod tests {
     }
     "#;
 	#[test]
-	fn test_validate_and_update_head_valid_block_next_epoch() {
+	fn test_validate_head_valid_block_next_epoch() {
 		let client_block_view_checkpoint = NearLightClientBlockView::from(
 			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
 		);
@@ -1686,11 +1686,11 @@ mod tests {
 		let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
 		assert_eq!(light_client_state.epoch_block_producers[&next_epoch_id].len(), 70);
 
-		assert!(light_client_state.validate_and_update_head(&client_block_view));
+		assert!(light_client_state.validate_head(&client_block_view));
 	}
 
 	#[test]
-	fn test_validate_and_update_head_valid_block_next_epoch_and_then_next_height() {
+	fn test_validate_head_valid_block_next_epoch_and_then_next_height() {
 		let client_block_view_checkpoint = NearLightClientBlockView::from(
 			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
 		);
@@ -1701,15 +1701,15 @@ mod tests {
 		let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
 		assert_eq!(light_client_state.epoch_block_producers[&next_epoch_id].len(), 70);
 
-		assert!(light_client_state.validate_and_update_head(&client_block_view));
+		assert!(light_client_state.validate_head(&client_block_view));
 		let client_block_view_next_height =
 			get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
-		assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
+		assert!(light_client_state.validate_head(&client_block_view_next_height));
 	}
 
 	#[test]
 	#[should_panic]
-	fn test_validate_and_update_head_invalid_block() {
+	fn test_validate_head_invalid_block() {
 		let client_block_view_checkpoint = NearLightClientBlockView::from(
 			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
 		);
@@ -1719,8 +1719,8 @@ mod tests {
 
 		let client_block_view_next_height =
 			get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
-		assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
-		assert!(light_client_state.validate_and_update_head(&client_block_view));
+		assert!(light_client_state.validate_head(&client_block_view_next_height));
+		assert!(light_client_state.validate_head(&client_block_view));
 	}
 
 	#[test]

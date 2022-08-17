@@ -13,20 +13,20 @@
 //! let mut lite_client = LightClient::with_checkpoint(trusted_checkpoint);
 //!
 //! // there are two operations that can be performed:
-//! // `validate_and_update_head` & `validate_transaction`
+//! // `validate_head` & `validate_transaction`
 //!
-//! lite_client.validate_and_update_head(block_view);
+//! lite_client.validate_head(block_view);
 //! lite_client.validate_transaction(outcome_proof, outcome_root_proof, expected_block_outcome_root);
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
 
 mod block_validation;
 mod checkpoint;
 mod client;
 mod error;
 mod merkle_tree;
-mod signature;
-mod storage;
 #[cfg(test)]
 mod test_utils;
 mod verifier;

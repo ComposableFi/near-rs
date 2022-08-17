@@ -88,7 +88,7 @@ async fn both_relayer_and_lite_client() {
 
 				log::info!("validating block height={}", light_client_block_view.inner_lite.height);
 
-				assert!(lite_client.validate_and_update_head(&light_client_block_view).unwrap());
+				assert!(lite_client.validate_head(&light_client_block_view).unwrap());
 
 				log::info!(
 					"validated block height={} and head is on height={}",

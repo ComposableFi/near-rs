@@ -9,44 +9,99 @@ use near_primitives_wasm_friendly::{
 use sp_std::{borrow::ToOwned, vec, vec::Vec};
 
 use borsh::BorshSerialize;
-pub trait StateTransitionVerificator: StateStorage {
-	type D: Digest;
-	type HF: HostFunctions;
 
-	fn validate_and_update_head(
-		&mut self,
-		block_view: &LightClientBlockView,
-	) -> LiteClientResult<bool> {
-		let head = self.get_head();
-		let epoch_block_producers = self.get_epoch_block_producers();
-		if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {
-			return Ok(false)
-		}
-		self.insert_epoch_block_producers(
-			block_view.inner_lite.next_epoch_id,
-			block_view.next_bps.as_ref().unwrap().clone(),
-		);
-
-		self.set_new_head(block_view.clone());
-
-		#[cfg(test)]
-		log::info!("updated head to height = {}", self.get_head().inner_lite.height);
-
-		Ok(true)
+fn validate_head<H: HostFunctions>(
+	head: &LightClientBlockView,
+	block_view: &LightClientBlockView,
+) -> LiteClientResult<()> {
+	let epoch_block_producers = self.get_epoch_block_producers();
+	if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {
+		Err(())?
 	}
 
-	fn validate_transaction(
-		&self,
-		outcome_proof: &OutcomeProof,
-		outcome_root_proof: MerklePath,
-		expected_block_outcome_root: CryptoHash,
-	) -> LiteClientResult<bool> {
-		let execution_outcome_hash =
-			calculate_execution_outcome_hash::<Self::D>(&outcome_proof.outcome, outcome_proof.id);
-		let shard_outcome_root =
-			compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
+	self.set_new_head(block_view.clone());
 
-		let block_outcome_root = compute_root_from_path::<Self::D>(
+	#[cfg(test)]
+	log::info!("updated head to height = {}", self.get_head().inner_lite.height);
+
+	Ok(())
+}
+
+fn validate_transaction(
+	outcome_proof: &OutcomeProof,
+	outcome_root_proof: MerklePath,
+	expected_block_outcome_root: CryptoHash,
+) -> LiteClientResult<()> {
+	let execution_outcome_hash =
+		calculate_execution_outcome_hash::<Self::D>(&outcome_proof.outcome, outcome_proof.id);
+	let shard_outcome_root =
+		compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
+
+	let block_outcome_root = compute_root_from_path::<Self::D>(
+		&outcome_root_proof,
+		Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
+			.as_slice()
+			.try_into()
+			.unwrap(),
+	)?;
+
+	// TODO: validate that the block_outcome_root is present in the state
+	if expected_block_outcome_root != block_outcome_root {
+		Err(())?
+	}
+
+	Ok(())
+}
+
+fn validate_transactions(
+	outcome_proofs: Vec<OutcomeProof>,
+	outcome_root_proofs: Vec<MerklePath>,
+	expected_block_outcome_root: CryptoHash,
+) -> LiteClientResult<()> {
+	if outcome_proofs.len() != outcome_root_proofs.len() {
+		Err(())?
+	}
+	if outcome_proofs.len() == 0 {
+		// TODO: validate this
+		Err(())?
+	}
+
+	let mut execution_outcome_hashes = vec![];
+	for outcome_proof in &outcome_proofs {
+		execution_outcome_hashes.push(calculate_execution_outcome_hash::<Self::D>(
+			&outcome_proof.outcome,
+			outcome_proof.id,
+		));
+	}
+
+	let mut proof_verifier_shard_outcome = ProofBatchVerifier::<Self::HF>::new();
+	let outcome_proofs_iter = outcome_proofs.iter().map(|op| &op.proof);
+	proof_verifier_shard_outcome.update_cache(outcome_proofs_iter.clone())?;
+
+	let mut shard_outcome_roots = vec![];
+	for (outcome_root_proof, execution_outcome_hash) in
+		outcome_proofs_iter.zip(execution_outcome_hashes)
+	{
+		shard_outcome_roots.push(
+			proof_verifier_shard_outcome
+				.calculate_root_hash(&outcome_root_proof, execution_outcome_hash)?,
+		);
+	}
+
+	// confirm that all shard outcome roots are the same
+	let shard_outcome_root_sample = &shard_outcome_roots[0];
+	if shard_outcome_roots.iter().skip(1).any(|hash| hash != shard_outcome_root_sample) {
+		Err(())?
+	}
+
+	let mut block_outcome_root_verifier = ProofBatchVerifier::<Self::HF>::new();
+	let outcome_root_proofs_iter = outcome_root_proofs.iter();
+	block_outcome_root_verifier.update_cache(outcome_root_proofs_iter.clone())?;
+
+	for (outcome_root_proof, shard_outcome_root) in
+		outcome_root_proofs_iter.zip(shard_outcome_roots)
+	{
+		let block_outcome_root = block_outcome_root_verifier.calculate_root_hash(
 			&outcome_root_proof,
 			Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
 				.as_slice()
@@ -54,74 +109,12 @@ pub trait StateTransitionVerificator: StateStorage {
 				.unwrap(),
 		)?;
 
-		// TODO: validate that the block_outcome_root is present in the state
-		Ok(expected_block_outcome_root == block_outcome_root)
+		if expected_block_outcome_root != block_outcome_root {
+			Err(())?
+		}
 	}
-
-	fn validate_transactions(
-		&self,
-		outcome_proofs: Vec<OutcomeProof>,
-		outcome_root_proofs: Vec<MerklePath>,
-		expected_block_outcome_root: CryptoHash,
-	) -> LiteClientResult<bool> {
-		if outcome_proofs.len() != outcome_root_proofs.len() {
-			return Ok(false)
-		}
-		if outcome_proofs.len() == 0 {
-			// TODO: validate this
-			return Ok(false)
-		}
-
-		let mut execution_outcome_hashes = vec![];
-		for outcome_proof in &outcome_proofs {
-			execution_outcome_hashes.push(calculate_execution_outcome_hash::<Self::D>(
-				&outcome_proof.outcome,
-				outcome_proof.id,
-			));
-		}
-
-		let mut proof_verifier_shard_outcome = ProofBatchVerifier::<Self::HF>::new();
-		let outcome_proofs_iter = outcome_proofs.iter().map(|op| &op.proof);
-		proof_verifier_shard_outcome.update_cache(outcome_proofs_iter.clone())?;
-
-		let mut shard_outcome_roots = vec![];
-		for (outcome_root_proof, execution_outcome_hash) in
-			outcome_proofs_iter.zip(execution_outcome_hashes)
-		{
-			shard_outcome_roots.push(
-				proof_verifier_shard_outcome
-					.calculate_root_hash(&outcome_root_proof, execution_outcome_hash)?,
-			);
-		}
-
-		// confirm that all shard outcome roots are the same
-		let shard_outcome_root_sample = &shard_outcome_roots[0];
-		if shard_outcome_roots.iter().skip(1).any(|hash| hash != shard_outcome_root_sample) {
-			return Ok(false)
-		}
-
-		let mut block_outcome_root_verifier = ProofBatchVerifier::<Self::HF>::new();
-		let outcome_root_proofs_iter = outcome_root_proofs.iter();
-		block_outcome_root_verifier.update_cache(outcome_root_proofs_iter.clone())?;
-
-		for (outcome_root_proof, shard_outcome_root) in
-			outcome_root_proofs_iter.zip(shard_outcome_roots)
-		{
-			let block_outcome_root = block_outcome_root_verifier.calculate_root_hash(
-				&outcome_root_proof,
-				Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
-					.as_slice()
-					.try_into()
-					.unwrap(),
-			)?;
-
-			if expected_block_outcome_root != block_outcome_root {
-				return Ok(false)
-			}
-		}
-		// TODO: validate that the block_outcome_root is present in the state
-		Ok(true)
-	}
+	// TODO: validate that the block_outcome_root is present in the state
+	Ok(())
 }
 
 // This function is needed in order to calculate the right execution outcome hash
@@ -2548,9 +2541,9 @@ mod test {
 
 		let mut light_client =
 			LessDummyLiteClient::new_from_checkpoint(client_block_view_checkpoint);
-		assert!(light_client.validate_and_update_head(&client_block_view).unwrap());
-		assert!(light_client.validate_and_update_head(&client_block_view_next_epoch).unwrap());
+		assert!(light_client.validate_head(&client_block_view).unwrap());
+		assert!(light_client.validate_head(&client_block_view_next_epoch).unwrap());
 		// previous epoch should fail
-		assert!(!light_client.validate_and_update_head(&client_block_view).unwrap());
+		assert!(!light_client.validate_head(&client_block_view).unwrap());
 	}
 }

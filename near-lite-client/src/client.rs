@@ -1,3 +1,4 @@
+use sp_io::crypto::ed25519_verify;
 use near_merkle_proofs::HostFunctions;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
@@ -8,7 +9,8 @@ use crate::{
 	verifier::StateTransitionVerificator,
 };
 
-use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, ValidatorStakeView};
+use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, PublicKey, ValidatorStakeView};
+
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
 /// It is also able to verify a new state transition, and update its head.
@@ -37,30 +39,19 @@ impl LightClient {
 	}
 }
 
-impl StateStorage for LightClient {
-	fn get_head(&self) -> &LightClientBlockView {
-		self.state_storage.get_head()
-	}
-
-	fn set_new_head(&mut self, new_head: LightClientBlockView) {
-		self.state_storage.set_new_head(new_head)
-	}
-
-	fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
-		self.state_storage.get_epoch_block_producers()
-	}
-
-	fn insert_epoch_block_producers(&mut self, epoch: CryptoHash, bps: Vec<ValidatorStakeView>) {
-		self.state_storage.insert_epoch_block_producers(epoch, bps)
-	}
-}
-
 pub struct NearHostFunctions;
 
 impl HostFunctions for NearHostFunctions {
 	fn sha256(data: &[u8]) -> [u8; 32] {
 		use sha2::Digest;
 		sha2::Sha256::digest(data).try_into().unwrap()
+	}
+
+	fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
+		match self {
+			Self::Ed25519(signature) =>
+				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key)),
+		}
 	}
 }
 
@@ -124,7 +115,7 @@ mod tests {
 		type D = Sha256Digest;
 		type HF = MockedHostFunctions;
 
-		fn validate_and_update_head(
+		fn validate_head(
 			&mut self,
 			_block_view: &LightClientBlockView,
 		) -> LiteClientResult<bool> {
@@ -138,6 +129,6 @@ mod tests {
 			MockLightClient::new_from_checkpoint(TrustedCheckpoint::new_for_test());
 
 		let block_view = LightClientBlockView::new_for_test();
-		assert!(mock_light_client.validate_and_update_head(&block_view).unwrap());
+		assert!(mock_light_client.validate_head(&block_view).unwrap());
 	}
 }

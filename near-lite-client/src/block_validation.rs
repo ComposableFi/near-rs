@@ -18,7 +18,6 @@ pub fn validate_light_block<D: Digest>(
 	block_view: &LightClientBlockView,
 	epoch_block_producers_map: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<bool> {
-	use crate::signature::SignatureVerification;
 
 	//The light client updates its head with the information from LightClientBlockView iff:
 
