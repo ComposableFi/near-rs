@@ -58,6 +58,7 @@ pub trait StateTransitionVerificator: StateStorage {
                 .unwrap(),
         )?;
 
+        // TODO: validate that the block_outcome_root is present in the state
         Ok(expected_block_outcome_root == block_outcome_root)
     }
 
@@ -126,7 +127,7 @@ pub trait StateTransitionVerificator: StateStorage {
                 return Ok(false);
             }
         }
-
+        // TODO: validate that the block_outcome_root is present in the state
         Ok(true)
     }
 }
