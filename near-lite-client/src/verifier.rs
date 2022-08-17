@@ -432,7 +432,16 @@ mod test {
         assert!(dummy_lite_client
             .validate_transaction(
                 &outcome_proof,
-                outcome_root_proof,
+                outcome_root_proof.clone(),
+                expected_block_outcome_root,
+            )
+            .unwrap());
+
+        // test trivial version of validate transactions (only one transaction)
+        assert!(dummy_lite_client
+            .validate_transactions(
+                vec![outcome_proof],
+                vec![outcome_root_proof],
                 expected_block_outcome_root,
             )
             .unwrap());
