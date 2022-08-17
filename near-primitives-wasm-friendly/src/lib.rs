@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-
 use sp_std::prelude::*;
 
 use borsh::maybestd::{io::Write, string::String};
@@ -23,11 +22,19 @@ pub trait Digest {
 }
 
 #[derive(
-    Debug, Default, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
+    Debug,
+    Default,
+    Ord,
+    PartialOrd,
+    PartialEq,
+    Eq,
+    Hash,
+    Clone,
+    Copy,
+    BorshSerialize,
+    BorshDeserialize,
 )]
 pub struct CryptoHash(pub [u8; 32]);
-
-
 
 impl Signature {
     const LEN: usize = 64;
@@ -64,12 +71,11 @@ impl TryFrom<&[u8]> for CryptoHash {
 use sha2::Digest as Sha2Digest;
 
 impl CryptoHash {
-
     // copy from near primitives
     pub fn hash_bytes(bytes: &[u8]) -> CryptoHash {
         CryptoHash(sha2::Sha256::digest(bytes).into())
     }
-    
+
     pub fn hash_borsh<T: BorshSerialize>(value: &T) -> CryptoHash {
         let serialized = value.try_to_vec().unwrap();
         Self::hash_bytes(&serialized)
@@ -78,12 +84,11 @@ impl CryptoHash {
     pub fn from_raw(raw: &[u8]) -> Self {
         Self::try_from(raw).unwrap()
     }
-    
+
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
-
 
 impl AsRef<[u8]> for CryptoHash {
     fn as_ref(&self) -> &[u8] {
@@ -115,7 +120,7 @@ pub type Gas = u64;
 
 pub type MerkleHash = CryptoHash;
 
-pub type MerklePath =  Vec<MerklePathItem>;
+pub type MerklePath = Vec<MerklePathItem>;
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
@@ -197,7 +202,7 @@ pub struct ExecutionOutcomeView {
     pub status: Vec<u8>, // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary structs)
 }
 
-#[derive(Debug, BorshDeserialize)]
+#[derive(Clone, Debug, BorshDeserialize)]
 pub struct OutcomeProof {
     pub proof: Vec<MerklePathItem>,
     pub block_hash: CryptoHash,
@@ -353,9 +358,8 @@ impl BorshDeserialize for PublicKey {
 }
 #[cfg(test)]
 mod tests {
+    use sp_std::{str::FromStr, vec};
     use std::io;
-    use sp_std::{vec, str::FromStr};
-
 
     use super::*;
 

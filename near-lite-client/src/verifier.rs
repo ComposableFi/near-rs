@@ -699,6 +699,292 @@ mod test {
     }
 
     #[test]
+    fn test_validate_transactions_unhappy_path() {
+        let tx_hash1 = CryptoHash::try_from(
+            bs58::decode("2ABS6aT4dzisPaaJRkgS2znpAcxViY12yUptrZLT4EeK")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+        let tx_hash2 = CryptoHash::try_from(
+            bs58::decode("13MQq1B7RjAP8XiqndyZJtBH7zkgBHTJNoaPbhdwcdtU")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+
+        let outcome_proof_1 = vec![
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("GjguZRf9uS8ZscLDQXh4bsuuXJei8MKokG7rQjgKDvHj")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("ELS9kDpohdXxYA18J6zKF7XshAamKs1dUJGKtxKn3ifj")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("4rTnGgmMjXYxe62tFiwA2admCaPw683gdes6J3az2vPk")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("2UNiZ4gYddFhKKLSFdXaZbfrqUZmCQmoxNLcU3opDR1k")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("HzRXE8Ldcxwb1zYEz8e3SKWc73BYbF4AQmbG51fYjL4Y")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+        ];
+
+        let outcome_root_proof_1 = vec![
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("AGFaK2rqbS2nY8MK3XbAAHwSPJ4QFyHhYcVmVHVXmd6L")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("C1Bv9ZtgZanoM1tJD3FWar5xkr4YqmPknv14L4Khr5ns")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+        ];
+
+        let outcome_proof_2 = vec![
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("8gjKrapi1C2B5ZBpRMKaXycrnc2qHZHM2QM8DCQGvdhy")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("ELS9kDpohdXxYA18J6zKF7XshAamKs1dUJGKtxKn3ifj")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("4rTnGgmMjXYxe62tFiwA2admCaPw683gdes6J3az2vPk")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("2UNiZ4gYddFhKKLSFdXaZbfrqUZmCQmoxNLcU3opDR1k")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("HzRXE8Ldcxwb1zYEz8e3SKWc73BYbF4AQmbG51fYjL4Y")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Right,
+            },
+        ];
+
+        let outcome_root_proof_2 = vec![
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("AGFaK2rqbS2nY8MK3XbAAHwSPJ4QFyHhYcVmVHVXmd6L")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+            MerklePathItem {
+                hash: CryptoHash::try_from(
+                    bs58::decode("C1Bv9ZtgZanoM1tJD3FWar5xkr4YqmPknv14L4Khr5ns")
+                        .into_vec()
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap(),
+                direction: Direction::Left,
+            },
+        ];
+
+        let status_1 = ExecutionStatusView::SuccessReceiptId(
+            NearCryptoHash::try_from(
+                bs58::decode("62GA8coFq7fy61nMVjBFEmP8GK5P7ouHDd1iAeRThUaZ")
+                    .into_vec()
+                    .unwrap()
+                    .as_ref(),
+            )
+            .unwrap(),
+        );
+        let serialized_status_1 = status_1.try_to_vec().unwrap();
+        let decoded_hash = bs58::decode("62GA8coFq7fy61nMVjBFEmP8GK5P7ouHDd1iAeRThUaZ")
+            .into_vec()
+            .unwrap();
+
+        let receipt_id = CryptoHash::try_from(decoded_hash.as_ref()).unwrap();
+
+        let execution_outcome_1 = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![receipt_id],
+            gas_burnt: 424555062500,
+            tokens_burnt: 42455506250000000000,
+            executor_id: "sweat_welcome.near".into(),
+            status: serialized_status_1.clone(),
+        };
+
+        let execution_outcome_1_modified = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![receipt_id],
+            gas_burnt: 0, // synthetically changed from 424555062500,
+            tokens_burnt: 42455506250000000000,
+            executor_id: "sweat_welcome.near".into(),
+            status: serialized_status_1,
+        };
+
+        let outcome_proof_1_modified = OutcomeProof {
+            block_hash: CryptoHash([0; 32]),
+            id: tx_hash1,
+            proof: outcome_proof_1.clone(),
+            outcome: execution_outcome_1_modified,
+        };
+
+        let outcome_proof_1 = OutcomeProof {
+            block_hash: CryptoHash([0; 32]),
+            id: tx_hash1,
+            proof: outcome_proof_1,
+            outcome: execution_outcome_1,
+        };
+
+        let status_2 = ExecutionStatusView::SuccessReceiptId(
+            NearCryptoHash::try_from(
+                bs58::decode("Hefz34af1xY2mRWnD5HTBjLcaas67sqpJmZ83i3dTXHu")
+                    .into_vec()
+                    .unwrap()
+                    .as_ref(),
+            )
+            .unwrap(),
+        );
+        let serialized_status_2 = status_2.try_to_vec().unwrap();
+        let decoded_hash = bs58::decode("Hefz34af1xY2mRWnD5HTBjLcaas67sqpJmZ83i3dTXHu")
+            .into_vec()
+            .unwrap();
+
+        let receipt_id = CryptoHash::try_from(decoded_hash.as_ref()).unwrap();
+        let execution_outcome_2 = ExecutionOutcomeView {
+            logs: vec![],
+            receipt_ids: vec![receipt_id],
+            gas_burnt: 424555062500,
+            tokens_burnt: 42455506250000000000,
+            executor_id: "sweat_welcome.near".into(),
+            status: serialized_status_2,
+        };
+        let outcome_proof_2 = OutcomeProof {
+            block_hash: CryptoHash([0; 32]),
+            id: tx_hash2,
+            proof: outcome_proof_2,
+            outcome: execution_outcome_2,
+        };
+        let expected_block_outcome_root = CryptoHash::try_from(
+            bs58::decode("BCUnD77cEPGx8rUMNtQyyq5JGxb1s3fibsayyw93xbw7")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+        let expected_block_outcome_root_modified = CryptoHash::try_from(
+            bs58::decode("BCUnD77cEPGx8rUMNtQyyq5JGxb1s3fibsayyw93xbw1")
+                .into_vec()
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+        let dummy_lite_client = VeryDummyLiteClient {};
+
+        // will fail since gas burn was modified
+        assert_eq!(
+            dummy_lite_client
+                .validate_transactions(
+                    vec![outcome_proof_1_modified, outcome_proof_2.clone()],
+                    vec![outcome_root_proof_1.clone(), outcome_root_proof_2.clone()],
+                    expected_block_outcome_root,
+                )
+                .is_err(),
+            true,
+        );
+
+        assert_eq!(
+            dummy_lite_client
+                .validate_transactions(
+                    vec![outcome_proof_1, outcome_proof_2],
+                    vec![outcome_root_proof_1, outcome_root_proof_2],
+                    expected_block_outcome_root_modified,
+                )
+                .unwrap(),
+            false,
+        );
+    }
+
+    #[test]
     fn test_validate_light_block() {
         struct LessDummyLiteClient {
             head: LightClientBlockView,
