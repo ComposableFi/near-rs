@@ -17,8 +17,7 @@
 //! Nibble-orientated view onto byte-slice, allowing nibble-precision offsets.
 
 use elastic_array::ElasticArray36;
-use std::cmp::*;
-use std::fmt;
+use std::{cmp::*, fmt};
 
 /// Nibble-orientated view onto byte-slice, allowing nibble-precision offsets.
 ///
@@ -44,197 +43,187 @@ use std::fmt;
 /// ```
 #[derive(Copy, Clone, Eq, Ord)]
 pub struct NibbleSlice<'a> {
-    data: &'a [u8],
-    offset: usize,
+	data: &'a [u8],
+	offset: usize,
 }
 
 /// Iterator type for a nibble slice.
 pub struct NibbleSliceIterator<'a> {
-    p: &'a NibbleSlice<'a>,
-    i: usize,
+	p: &'a NibbleSlice<'a>,
+	i: usize,
 }
 
 impl Iterator for NibbleSliceIterator<'_> {
-    type Item = u8;
+	type Item = u8;
 
-    fn next(&mut self) -> Option<u8> {
-        self.i += 1;
-        if self.i <= self.p.len() {
-            Some(self.p.at(self.i - 1))
-        } else {
-            None
-        }
-    }
+	fn next(&mut self) -> Option<u8> {
+		self.i += 1;
+		if self.i <= self.p.len() {
+			Some(self.p.at(self.i - 1))
+		} else {
+			None
+		}
+	}
 }
 
 impl<'a> NibbleSlice<'a> {
-    /// Create a new nibble slice with the given byte-slice.
-    pub fn new(data: &'a [u8]) -> Self {
-        NibbleSlice::new_offset(data, 0)
-    }
+	/// Create a new nibble slice with the given byte-slice.
+	pub fn new(data: &'a [u8]) -> Self {
+		NibbleSlice::new_offset(data, 0)
+	}
 
-    /// Create a new nibble slice with the given byte-slice with a nibble offset.
-    pub fn new_offset(data: &'a [u8], offset: usize) -> Self {
-        NibbleSlice { data, offset }
-    }
+	/// Create a new nibble slice with the given byte-slice with a nibble offset.
+	pub fn new_offset(data: &'a [u8], offset: usize) -> Self {
+		NibbleSlice { data, offset }
+	}
 
-    /// Get an iterator for the series of nibbles.
-    pub fn iter(&'a self) -> NibbleSliceIterator<'a> {
-        NibbleSliceIterator { p: self, i: 0 }
-    }
+	/// Get an iterator for the series of nibbles.
+	pub fn iter(&'a self) -> NibbleSliceIterator<'a> {
+		NibbleSliceIterator { p: self, i: 0 }
+	}
 
-    /// Create a new nibble slice from the given HPE encoded data (e.g. output of `encoded()`).
-    pub fn from_encoded(data: &'a [u8]) -> (Self, bool) {
-        (
-            Self::new_offset(data, if data[0] & 16 == 16 { 1 } else { 2 }),
-            data[0] & 32 == 32,
-        )
-    }
+	/// Create a new nibble slice from the given HPE encoded data (e.g. output of `encoded()`).
+	pub fn from_encoded(data: &'a [u8]) -> (Self, bool) {
+		(Self::new_offset(data, if data[0] & 16 == 16 { 1 } else { 2 }), data[0] & 32 == 32)
+	}
 
-    /// Is this an empty slice?
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+	/// Is this an empty slice?
+	pub fn is_empty(&self) -> bool {
+		self.len() == 0
+	}
 
-    /// Get the length (in nibbles, naturally) of this slice.
-    #[inline]
-    pub fn len(&self) -> usize {
-        (self.data.len() * 2).saturating_sub(self.offset)
-    }
+	/// Get the length (in nibbles, naturally) of this slice.
+	#[inline]
+	pub fn len(&self) -> usize {
+		(self.data.len() * 2).saturating_sub(self.offset)
+	}
 
-    /// Get the nibble at position `i`.
-    #[inline(always)]
-    pub fn at(&self, i: usize) -> u8 {
-        if (self.offset + i) & 1 == 1 {
-            self.data[(self.offset + i) / 2] & 15u8
-        } else {
-            self.data[(self.offset + i) / 2] >> 4
-        }
-    }
+	/// Get the nibble at position `i`.
+	#[inline(always)]
+	pub fn at(&self, i: usize) -> u8 {
+		if (self.offset + i) & 1 == 1 {
+			self.data[(self.offset + i) / 2] & 15u8
+		} else {
+			self.data[(self.offset + i) / 2] >> 4
+		}
+	}
 
-    /// Return object which represents a view on to this slice (further) offset by `i` nibbles.
-    pub fn mid(&self, i: usize) -> Self {
-        NibbleSlice {
-            data: self.data,
-            offset: self.offset + i,
-        }
-    }
+	/// Return object which represents a view on to this slice (further) offset by `i` nibbles.
+	pub fn mid(&self, i: usize) -> Self {
+		NibbleSlice { data: self.data, offset: self.offset + i }
+	}
 
-    /// Do we start with the same nibbles as the whole of `them`?
-    pub fn starts_with(&self, them: &Self) -> bool {
-        self.common_prefix(them) == them.len()
-    }
+	/// Do we start with the same nibbles as the whole of `them`?
+	pub fn starts_with(&self, them: &Self) -> bool {
+		self.common_prefix(them) == them.len()
+	}
 
-    /// How many of the same nibbles at the beginning do we match with `them`?
-    pub fn common_prefix(&self, them: &Self) -> usize {
-        let s = min(self.len(), them.len());
-        for i in 0..s {
-            if self.at(i) != them.at(i) {
-                return i;
-            }
-        }
-        s
-    }
+	/// How many of the same nibbles at the beginning do we match with `them`?
+	pub fn common_prefix(&self, them: &Self) -> usize {
+		let s = min(self.len(), them.len());
+		for i in 0..s {
+			if self.at(i) != them.at(i) {
+				return i
+			}
+		}
+		s
+	}
 
-    /// Encode while nibble slice in prefixed hex notation, noting whether it `is_leaf`.
-    #[inline]
-    pub fn encode_nibbles(nibbles: &[u8], is_leaf: bool) -> ElasticArray36<u8> {
-        let l = nibbles.len();
-        let mut r = ElasticArray36::new();
-        let mut i = l % 2;
-        r.push(if i == 1 { 0x10 + nibbles[0] } else { 0 } + if is_leaf { 0x20 } else { 0 });
-        while i < l {
-            r.push(nibbles[i] * 16 + nibbles[i + 1]);
-            i += 2;
-        }
-        r
-    }
+	/// Encode while nibble slice in prefixed hex notation, noting whether it `is_leaf`.
+	#[inline]
+	pub fn encode_nibbles(nibbles: &[u8], is_leaf: bool) -> ElasticArray36<u8> {
+		let l = nibbles.len();
+		let mut r = ElasticArray36::new();
+		let mut i = l % 2;
+		r.push(if i == 1 { 0x10 + nibbles[0] } else { 0 } + if is_leaf { 0x20 } else { 0 });
+		while i < l {
+			r.push(nibbles[i] * 16 + nibbles[i + 1]);
+			i += 2;
+		}
+		r
+	}
 
-    /// Encode while nibble slice in prefixed hex notation, noting whether it `is_leaf`.
-    #[inline]
-    pub fn encoded(&self, is_leaf: bool) -> ElasticArray36<u8> {
-        let l = self.len();
-        let mut r = ElasticArray36::new();
-        let mut i = l % 2;
-        r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
-        while i < l {
-            r.push(self.at(i) * 16 + self.at(i + 1));
-            i += 2;
-        }
-        r
-    }
+	/// Encode while nibble slice in prefixed hex notation, noting whether it `is_leaf`.
+	#[inline]
+	pub fn encoded(&self, is_leaf: bool) -> ElasticArray36<u8> {
+		let l = self.len();
+		let mut r = ElasticArray36::new();
+		let mut i = l % 2;
+		r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
+		while i < l {
+			r.push(self.at(i) * 16 + self.at(i + 1));
+			i += 2;
+		}
+		r
+	}
 
-    pub fn merge_encoded(&self, other: &Self, is_leaf: bool) -> ElasticArray36<u8> {
-        let l = self.len() + other.len();
-        let mut r = ElasticArray36::new();
-        let mut i = l % 2;
-        r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
-        while i < l {
-            let bit1 = if i < self.len() {
-                self.at(i)
-            } else {
-                other.at(i - self.len())
-            };
-            let bit2 = if i + 1 < l {
-                if i + 1 < self.len() {
-                    self.at(i + 1)
-                } else {
-                    other.at(i + 1 - self.len())
-                }
-            } else {
-                0
-            };
+	pub fn merge_encoded(&self, other: &Self, is_leaf: bool) -> ElasticArray36<u8> {
+		let l = self.len() + other.len();
+		let mut r = ElasticArray36::new();
+		let mut i = l % 2;
+		r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
+		while i < l {
+			let bit1 = if i < self.len() { self.at(i) } else { other.at(i - self.len()) };
+			let bit2 = if i + 1 < l {
+				if i + 1 < self.len() {
+					self.at(i + 1)
+				} else {
+					other.at(i + 1 - self.len())
+				}
+			} else {
+				0
+			};
 
-            r.push(bit1 * 16 + bit2);
-            i += 2;
-        }
-        r
-    }
+			r.push(bit1 * 16 + bit2);
+			i += 2;
+		}
+		r
+	}
 
-    /// Encode only the leftmost `n` bytes of the nibble slice in prefixed hex notation,
-    /// noting whether it `is_leaf`.
-    pub fn encoded_leftmost(&self, n: usize, is_leaf: bool) -> ElasticArray36<u8> {
-        let l = min(self.len(), n);
-        let mut r = ElasticArray36::new();
-        let mut i = l % 2;
-        r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
-        while i < l {
-            r.push(self.at(i) * 16 + self.at(i + 1));
-            i += 2;
-        }
-        r
-    }
+	/// Encode only the leftmost `n` bytes of the nibble slice in prefixed hex notation,
+	/// noting whether it `is_leaf`.
+	pub fn encoded_leftmost(&self, n: usize, is_leaf: bool) -> ElasticArray36<u8> {
+		let l = min(self.len(), n);
+		let mut r = ElasticArray36::new();
+		let mut i = l % 2;
+		r.push(if i == 1 { 0x10 + self.at(0) } else { 0 } + if is_leaf { 0x20 } else { 0 });
+		while i < l {
+			r.push(self.at(i) * 16 + self.at(i + 1));
+			i += 2;
+		}
+		r
+	}
 }
 
 impl PartialEq for NibbleSlice<'_> {
-    fn eq(&self, them: &Self) -> bool {
-        self.len() == them.len() && self.starts_with(them)
-    }
+	fn eq(&self, them: &Self) -> bool {
+		self.len() == them.len() && self.starts_with(them)
+	}
 }
 
 impl PartialOrd for NibbleSlice<'_> {
-    fn partial_cmp(&self, them: &Self) -> Option<Ordering> {
-        let s = min(self.len(), them.len());
-        for i in 0..s {
-            match self.at(i).partial_cmp(&them.at(i)).unwrap() {
-                Ordering::Less => return Some(Ordering::Less),
-                Ordering::Greater => return Some(Ordering::Greater),
-                _ => {}
-            }
-        }
-        self.len().partial_cmp(&them.len())
-    }
+	fn partial_cmp(&self, them: &Self) -> Option<Ordering> {
+		let s = min(self.len(), them.len());
+		for i in 0..s {
+			match self.at(i).partial_cmp(&them.at(i)).unwrap() {
+				Ordering::Less => return Some(Ordering::Less),
+				Ordering::Greater => return Some(Ordering::Greater),
+				_ => {},
+			}
+		}
+		self.len().partial_cmp(&them.len())
+	}
 }
 
 impl fmt::Debug for NibbleSlice<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_empty() {
-            return Ok(());
-        }
-        write!(f, "{:01x}", self.at(0))?;
-        for i in 1..self.len() {
-            write!(f, "'{:01x}", self.at(i))?;
-        }
-        Ok(())
-    }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if self.is_empty() {
+			return Ok(())
+		}
+		write!(f, "{:01x}", self.at(0))?;
+		for i in 1..self.len() {
+			write!(f, "'{:01x}", self.at(i))?;
+		}
+		Ok(())
+	}
 }

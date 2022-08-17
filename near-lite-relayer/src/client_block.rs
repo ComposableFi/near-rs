@@ -7,25 +7,21 @@ use crate::client_proof::LightClientBlockView;
 
 #[derive(Debug, Deserialize)]
 struct ResultFromRpc {
-    pub result: NearLightClientBlockView,
+	pub result: NearLightClientBlockView,
 }
 
 pub fn get_client_block_view(client_block_response: &str) -> io::Result<LightClientBlockView> {
-    Ok(
-        serde_json::from_str::<ResultFromRpc>(client_block_response)?
-            .result
-            .into(),
-    )
+	Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result.into())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::client_proof::next_block_hash;
+	use crate::client_proof::next_block_hash;
 
-    use super::*;
-    use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
+	use super::*;
+	use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
 
-    const CLIENT_BLOCK_RESPONSE: &'static str = r#"
+	const CLIENT_BLOCK_RESPONSE: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -525,35 +521,36 @@ mod tests {
     }
     "#;
 
-    #[test]
-    fn test() {
-        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
+	#[test]
+	fn test() {
+		let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
 
-        assert_eq!(
-            client_block_view.prev_block_hash.as_ref(),
-            JSONCryptoHash::from(
-                Base58CryptoHash::try_from("kobvwf6idnjzf1zUCdU8igL9G9ZUZyexkqVXFSpUVTK").unwrap()
-            )
-            .as_ref(),
-        );
+		assert_eq!(
+			client_block_view.prev_block_hash.as_ref(),
+			JSONCryptoHash::from(
+				Base58CryptoHash::try_from("kobvwf6idnjzf1zUCdU8igL9G9ZUZyexkqVXFSpUVTK").unwrap()
+			)
+			.as_ref(),
+		);
 
-        assert_eq!(
-            client_block_view.current_block_hash().as_ref(),
-            JSONCryptoHash::from(
-                Base58CryptoHash::try_from("DixB3qV9kRwPDWMKTuhBLM67QgW7bpJ6M5hrZr79kC8F").unwrap()
-            )
-            .as_ref(),
-        );
+		assert_eq!(
+			client_block_view.current_block_hash().as_ref(),
+			JSONCryptoHash::from(
+				Base58CryptoHash::try_from("DixB3qV9kRwPDWMKTuhBLM67QgW7bpJ6M5hrZr79kC8F").unwrap()
+			)
+			.as_ref(),
+		);
 
-        let next_block_hash = next_block_hash(
-            client_block_view.next_block_inner_hash, client_block_view.current_block_hash()
-        );
-        assert_eq!(
-            next_block_hash.as_ref(),
-            JSONCryptoHash::from(
-                Base58CryptoHash::try_from("HNfD1Kex1awMexrsjCUa8bUrykMecGUpysLv5dBTj5pK").unwrap()
-            )
-            .as_ref(),
-        )
-    }
+		let next_block_hash = next_block_hash(
+			client_block_view.next_block_inner_hash,
+			client_block_view.current_block_hash(),
+		);
+		assert_eq!(
+			next_block_hash.as_ref(),
+			JSONCryptoHash::from(
+				Base58CryptoHash::try_from("HNfD1Kex1awMexrsjCUa8bUrykMecGUpysLv5dBTj5pK").unwrap()
+			)
+			.as_ref(),
+		)
+	}
 }
