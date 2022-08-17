@@ -1,5 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod host_functions;
+pub use host_functions::HostFunctions;
+
+use sp_io::crypto::ed25519_verify;
 use sp_std::prelude::*;
 
 use borsh::maybestd::{io::Write, string::String};
@@ -15,10 +19,6 @@ pub struct PublicKey(pub [u8; 32]);
 #[derive(Debug, Clone)]
 pub enum Signature {
 	Ed25519(Ed25519Signature),
-}
-
-pub trait Digest {
-	fn digest(data: impl AsRef<[u8]>) -> Vec<u8>;
 }
 
 #[derive(
@@ -48,6 +48,14 @@ impl Signature {
 			Self::Ed25519(inner) => &inner.0,
 		}
 	}
+
+	pub fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
+		match self {
+			Self::Ed25519(signature) => {
+				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key))
+			},
+		}
+	}
 }
 
 impl PublicKey {
@@ -62,7 +70,7 @@ impl TryFrom<&[u8]> for CryptoHash {
 	type Error = ConversionError;
 	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
 		if v.len() != 32 {
-			return Err(ConversionError("wrong size".into()))
+			return Err(ConversionError("wrong size".into()));
 		}
 		let inner: [u8; 32] = v.try_into().unwrap();
 		Ok(CryptoHash(inner))
@@ -106,7 +114,7 @@ impl TryFrom<&[u8]> for PublicKey {
 	type Error = ConversionError;
 	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
 		if v.len() != 32 {
-			return Err(ConversionError("wrong size".into()))
+			return Err(ConversionError("wrong size".into()));
 		}
 		let inner: [u8; 32] = v.try_into().unwrap();
 		Ok(PublicKey(inner))
@@ -233,13 +241,13 @@ pub struct MerklePathItem {
 }
 
 impl LightClientBlockView {
-	pub fn current_block_hash<D: Digest>(&self) -> CryptoHash {
+	pub fn current_block_hash<H: HostFunctions>(&self) -> CryptoHash {
 		// NOTE: current block hash does not contain `timestamp_nanosec` from
 		// BlockHeaderInnerLiteView hence the reason of creating a new struct (i.e:
 		// BlockHeaderInnerLiteViewFinal) to conform with the struct that is actually being hashed.
-		current_block_hash::<D>(
-			D::digest(
-				BlockHeaderInnerLiteViewFinal::from(self.inner_lite.clone())
+		current_block_hash::<H>(
+			H::sha256(
+				&BlockHeaderInnerLiteViewFinal::from(self.inner_lite.clone())
 					.try_to_vec()
 					.unwrap(),
 			)
@@ -273,15 +281,15 @@ impl LightClientBlockView {
 /// prev_hash
 /// ))
 /// ```
-fn current_block_hash<D: Digest>(
+fn current_block_hash<H: HostFunctions>(
 	inner_lite_hash: CryptoHash,
 	inner_rest_hash: CryptoHash,
 	prev_block_hash: CryptoHash,
 ) -> CryptoHash {
 	CryptoHash(
-		D::digest(
-			[
-				D::digest([inner_lite_hash.as_ref(), inner_rest_hash.as_ref()].concat()).as_ref(),
+		H::sha256(
+			&[
+				H::sha256(&[inner_lite_hash.as_ref(), inner_rest_hash.as_ref()].concat()).as_ref(),
 				prev_block_hash.as_ref(),
 			]
 			.concat(),

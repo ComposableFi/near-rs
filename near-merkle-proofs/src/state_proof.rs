@@ -2,7 +2,7 @@
 //! verbatim as much as possible. There has been some tweaks in order
 //! to make it no_std compatible.
 
-use near_primitives_wasm_friendly::{CryptoHash, Digest};
+use near_primitives_wasm_friendly::{CryptoHash, HostFunctions};
 use no_std_compat as std;
 use std::{string::String, vec::Vec};
 
@@ -84,7 +84,7 @@ impl RawTrieNodeWithSize {
 	/// decode is used to convert the proof that is sent by the RPC into `RawTrieNodeWithSize`
 	pub fn decode(bytes: &[u8]) -> Result<Self, String> {
 		if bytes.len() < 8 {
-			return Err("Wrong type".into())
+			return Err("Wrong type".into());
 		}
 		let node = RawTrieNode::decode(&bytes[0..bytes.len() - 8])?;
 		let mut arr: [u8; 8] = Default::default();
@@ -190,7 +190,7 @@ impl RawTrieNode {
 }
 
 /// Verifies proof of membership and non membership of state proofs.
-pub fn verify_state_proof<D: Digest>(
+pub fn verify_state_proof<H: HostFunctions>(
 	key: &[u8],
 	levels: &Vec<RawTrieNodeWithSize>,
 	// when verifying proofs of non-membership, this value should be None
@@ -201,37 +201,37 @@ pub fn verify_state_proof<D: Digest>(
 	let mut hash_node = |node: &RawTrieNodeWithSize| {
 		v.clear();
 		node.encode_into(&mut v);
-		CryptoHash::from_raw(&D::digest(&v))
+		CryptoHash::from_raw(&H::sha256(&v))
 	};
 	let mut hash = CryptoHash::default();
 	let mut key = NibbleSlice::new(key);
 	if levels.is_empty() && maybe_expected_value.is_some() {
-		return false
+		return false;
 	}
 	for node in levels.iter() {
 		match node {
 			RawTrieNodeWithSize { node: RawTrieNode::Leaf(_, _, value_hash), .. } => {
 				hash = hash_node(&node);
 				if hash != expected_hash {
-					return false
+					return false;
 				}
 
 				let node_key = node.node.get_key().expect("we've just wrapped the value; qed");
 				let nib = &NibbleSlice::from_encoded(&node_key).0;
 				if &key != nib {
-					return maybe_expected_value.is_none()
+					return maybe_expected_value.is_none();
 				}
 
 				return if let Some(value) = maybe_expected_value {
 					CryptoHash::hash_bytes(value) == *value_hash
 				} else {
 					false
-				}
+				};
 			},
 			RawTrieNodeWithSize { node: RawTrieNode::Extension(_, child_hash), .. } => {
 				hash = hash_node(&node);
 				if hash != expected_hash {
-					return false
+					return false;
 				}
 				expected_hash = *child_hash;
 
@@ -239,14 +239,14 @@ pub fn verify_state_proof<D: Digest>(
 				let node_key = node.node.get_key().expect("we've just wrapped the value; qed");
 				let nib = NibbleSlice::from_encoded(&node_key).0;
 				if !key.starts_with(&nib) {
-					return maybe_expected_value.is_none()
+					return maybe_expected_value.is_none();
 				}
 				key = key.mid(nib.len());
 			},
 			RawTrieNodeWithSize { node: RawTrieNode::Branch(children, value), .. } => {
 				hash = hash_node(&node);
 				if hash != expected_hash {
-					return false
+					return false;
 				}
 
 				if key.is_empty() {
@@ -258,7 +258,7 @@ pub fn verify_state_proof<D: Digest>(
 						(None, Some(_)) => false,
 						(Some(_), None) => false,
 						(None, None) => true,
-					}
+					};
 				}
 				let index = key.at(0);
 				match &children[index as usize] {
@@ -281,11 +281,19 @@ mod tests {
 
 	use near_primitives::hash::CryptoHash as NearCryptoHash;
 
-	struct Sha2Digest;
-	impl Digest for Sha2Digest {
-		fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
+	struct MockedHostFunctions;
+	impl HostFunctions for MockedHostFunctions {
+		fn sha256(data: &[u8]) -> [u8; 32] {
 			use sha2::Digest;
-			sha2::Sha256::digest(data).to_vec()
+			sha2::Sha256::digest(data).to_vec().try_into().unwrap()
+		}
+
+		fn verify(
+			&self,
+			_data: impl AsRef<[u8]>,
+			_public_key: near_primitives_wasm_friendly::PublicKey,
+		) -> bool {
+			todo!()
 		}
 	}
 
@@ -312,13 +320,13 @@ mod tests {
 				.unwrap(),
 		);
 
-		assert!(verify_state_proof::<Sha2Digest>(
+		assert!(verify_state_proof::<MockedHostFunctions>(
 			key.as_ref(),
 			&raw_proof,
 			Some(b"coin".as_ref()),
 			root_hash
 		));
-		assert!(!verify_state_proof::<Sha2Digest>(
+		assert!(!verify_state_proof::<MockedHostFunctions>(
 			key.as_ref(),
 			&raw_proof,
 			Some(b"coin_not_present".as_ref()),
@@ -341,6 +349,11 @@ mod tests {
 				.unwrap(),
 		);
 
-		assert!(verify_state_proof::<Sha2Digest>(key.as_ref(), &raw_proof, None, root_hash));
+		assert!(verify_state_proof::<MockedHostFunctions>(
+			key.as_ref(),
+			&raw_proof,
+			None,
+			root_hash
+		));
 	}
 }

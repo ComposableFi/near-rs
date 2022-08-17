@@ -10,13 +10,11 @@ extern crate no_std_compat as std;
 mod nibble;
 pub mod state_proof;
 
+use borsh::BorshSerialize;
 use core::marker::PhantomData;
 use std::{collections::HashMap, string::String, vec::Vec};
-mod host_functions;
-use borsh::BorshSerialize;
-pub use host_functions::HostFunctions;
 
-use near_primitives_wasm_friendly::{CryptoHash, Direction, MerklePath};
+use near_primitives_wasm_friendly::{CryptoHash, Direction, HostFunctions, MerklePath};
 
 type Level = usize;
 type Index = usize;
@@ -57,7 +55,7 @@ impl CachedNodes {
 		leaf_index: LeafIndex,
 	) -> Result<(), String> {
 		if given_nodes.len() == 0 {
-			return Ok(())
+			return Ok(());
 		}
 
 		given_nodes
@@ -67,8 +65,9 @@ impl CachedNodes {
 				if let Some(cached_node) = self.inner.get(&(*level, *index)) {
 					match hash {
 						// given that the hash is cached, only check for a potential error
-						Some(hash) if hash != cached_node =>
-							return Err("cached_node != hash".into()),
+						Some(hash) if hash != cached_node => {
+							return Err("cached_node != hash".into())
+						},
 						_ => return Ok(()),
 					}
 				}
@@ -96,7 +95,7 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
 	) -> Result<CryptoHash, String> {
 		// trivial example, where proof is empty
 		if proof.len() == 0 {
-			return Ok(CryptoHash::default())
+			return Ok(CryptoHash::default());
 		}
 
 		// the first element is somewhat different, since the caller is passing the item's hash
@@ -126,7 +125,7 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
 				// this check is not made, a wrong proof could be passed and stil "yield" the right
 				// root hash
 				if parent_hash != &hash.clone().unwrap() {
-					return Err("cached_value of parent hash != calculated hash".into())
+					return Err("cached_value of parent hash != calculated hash".into());
 				}
 			},
 		}
@@ -143,12 +142,14 @@ impl<HF: HostFunctions> ProofBatchVerifier<HF> {
 				match cached_value {
 					None => {
 						match merkle_path_item.direction {
-							Direction::Left =>
+							Direction::Left => {
 								hash =
-									Ok(hash_borsh::<_, HF>(&(merkle_path_item.hash, hash.unwrap()))),
-							Direction::Right =>
+									Ok(hash_borsh::<_, HF>(&(merkle_path_item.hash, hash.unwrap())))
+							},
+							Direction::Right => {
 								hash =
-									Ok(hash_borsh::<_, HF>(&(hash.unwrap(), merkle_path_item.hash))),
+									Ok(hash_borsh::<_, HF>(&(hash.unwrap(), merkle_path_item.hash)))
+							},
 						};
 						// update the cache
 						self.cached_nodes.inner.insert((*level, *index), hash.clone().unwrap());
@@ -331,6 +332,14 @@ mod tests {
 		fn sha256(data: &[u8]) -> [u8; 32] {
 			use sha2::Digest;
 			sha2::Sha256::digest(data).try_into().unwrap()
+		}
+
+		fn verify(
+			&self,
+			data: impl AsRef<[u8]>,
+			public_key: near_primitives_wasm_friendly::PublicKey,
+		) -> bool {
+			todo!()
 		}
 	}
 

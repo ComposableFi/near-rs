@@ -1,4 +1,4 @@
-use near_primitives_wasm_friendly::Digest;
+use near_primitives_wasm_friendly::HostFunctions;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::LiteClientResult;
@@ -8,17 +8,15 @@ use near_primitives_wasm_friendly::{
 };
 
 use borsh::BorshSerialize;
-use sp_io::hashing::sha2_256;
 
 #[cfg(test)]
 use sha2::{Digest as DigestTrait, Sha256};
 
-pub fn validate_light_block<D: Digest>(
+pub fn validate_light_block<H: HostFunctions>(
 	head: &LightClientBlockView,
 	block_view: &LightClientBlockView,
 	epoch_block_producers_map: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<bool> {
-
 	//The light client updates its head with the information from LightClientBlockView iff:
 
 	// 1. The height of the block is higher than the height of the current head;
@@ -33,25 +31,25 @@ pub fn validate_light_block<D: Digest>(
 	// QUESTION: do we also want to pass the block hash received from the RPC?
 	// it's not on the spec, but it's an extra validation
 	let (_current_block_hash, _next_block_hash, approval_message) =
-		reconstruct_light_client_block_view_fields::<D>(block_view)?;
+		reconstruct_light_client_block_view_fields::<H>(block_view)?;
 
 	// (1)
 	if block_view.inner_lite.height <= head.inner_lite.height {
-		return Ok(false)
+		return Ok(false);
 	}
 
 	// (2)
 	if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
 		.contains(&block_view.inner_lite.epoch_id)
 	{
-		return Ok(false)
+		return Ok(false);
 	}
 
 	// (3)
-	if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id &&
-		block_view.next_bps.is_none()
+	if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id
+		&& block_view.next_bps.is_none()
 	{
-		return Ok(false)
+		return Ok(false);
 	}
 
 	//  (4) and (5)
@@ -68,7 +66,7 @@ pub fn validate_light_block<D: Digest>(
 		total_stake += bp_stake;
 
 		if maybe_signature.is_none() {
-			continue
+			continue;
 		}
 
 		approved_stake += bp_stake;
@@ -79,34 +77,34 @@ pub fn validate_light_block<D: Digest>(
 			.unwrap()
 			.verify(&approval_message, validator_public_key.clone())
 		{
-			return Ok(false)
+			return Ok(false);
 		}
 	}
 
 	let threshold = total_stake * 2 / 3;
 	if approved_stake <= threshold {
-		return Ok(false)
+		return Ok(false);
 	}
 
 	// # (6)
 	if block_view.next_bps.is_some() {
 		let block_view_next_bps_serialized =
 			block_view.next_bps.as_deref().unwrap().try_to_vec()?;
-		if D::digest(block_view_next_bps_serialized).as_slice() !=
-			block_view.inner_lite.next_bp_hash.as_ref()
+		if H::sha256(&block_view_next_bps_serialized).as_slice()
+			!= block_view.inner_lite.next_bp_hash.as_ref()
 		{
-			return Ok(false)
+			return Ok(false);
 		}
 	}
 	Ok(true)
 }
 
-pub fn reconstruct_light_client_block_view_fields<D: Digest>(
+pub fn reconstruct_light_client_block_view_fields<H: HostFunctions>(
 	block_view: &LightClientBlockView,
 ) -> LiteClientResult<(CryptoHash, CryptoHash, Vec<u8>)> {
-	let current_block_hash = block_view.current_block_hash::<D>();
+	let current_block_hash = block_view.current_block_hash::<H>();
 	let next_block_hash =
-		next_block_hash::<D>(block_view.next_block_inner_hash, current_block_hash);
+		next_block_hash::<H>(block_view.next_block_inner_hash, current_block_hash);
 	let approval_message = [
 		ApprovalInner::Endorsement(next_block_hash).try_to_vec()?,
 		(block_view.inner_lite.height + 2).to_le().try_to_vec()?,
@@ -115,29 +113,12 @@ pub fn reconstruct_light_client_block_view_fields<D: Digest>(
 	Ok((current_block_hash, next_block_hash, approval_message))
 }
 
-pub(crate) fn next_block_hash<D: Digest>(
+pub(crate) fn next_block_hash<H: HostFunctions>(
 	next_block_inner_hash: CryptoHash,
 	current_block_hash: CryptoHash,
 ) -> CryptoHash {
-	D::digest([next_block_inner_hash.as_ref(), current_block_hash.as_ref()].concat())
+	H::sha256(&[next_block_inner_hash.as_ref(), current_block_hash.as_ref()].concat())
 		.as_slice()
 		.try_into()
 		.expect("Could not hash the next block")
-}
-
-pub struct SubstrateDigest;
-impl Digest for SubstrateDigest {
-	fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
-		sha2_256(data.as_ref()).to_vec()
-	}
-}
-
-#[cfg(test)]
-pub struct Sha256Digest;
-
-#[cfg(test)]
-impl Digest for Sha256Digest {
-	fn digest(data: impl AsRef<[u8]>) -> Vec<u8> {
-		Sha256::digest(data).to_vec()
-	}
 }

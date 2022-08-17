@@ -1,15 +1,6 @@
-use sp_io::crypto::ed25519_verify;
-use near_merkle_proofs::HostFunctions;
-use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
+use crate::checkpoint::TrustedCheckpoint;
 
-use crate::{
-	block_validation::SubstrateDigest,
-	checkpoint::TrustedCheckpoint,
-	storage::{DummyStateStorage, StateStorage},
-	verifier::StateTransitionVerificator,
-};
-
-use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, PublicKey, ValidatorStakeView};
+use near_primitives_wasm_friendly::{HostFunctions, LightClientBlockView, PublicKey, Signature};
 
 /// LightClient keeps track of at least one block per epoch, the set of validators
 /// in each relevant epoch (depends on how much state wants to be stored -- configurable).
@@ -18,7 +9,6 @@ use near_primitives_wasm_friendly::{CryptoHash, LightClientBlockView, PublicKey,
 pub struct LightClient {
 	/// how many epochs the light client will track
 	relevant_epochs: usize,
-
 	state_storage: DummyStateStorage,
 }
 
@@ -47,29 +37,18 @@ impl HostFunctions for NearHostFunctions {
 		sha2::Sha256::digest(data).try_into().unwrap()
 	}
 
-	fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
-		match self {
-			Self::Ed25519(signature) =>
-				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key)),
+	fn verify(signature: Signature, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
+		match signature {
+			Signature::Ed25519(signature) => {
+				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key))
+			},
 		}
 	}
-}
-
-impl StateTransitionVerificator for LightClient {
-	type D = SubstrateDigest;
-	type HF = NearHostFunctions;
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::{
-		block_validation::Sha256Digest,
-		storage::{DummyStateStorage, StateStorage},
-		test_utils::MockedHostFunctions,
-		verifier::StateTransitionVerificator,
-		LiteClientResult,
-	};
 
 	struct MockLightClient {
 		/// set of validators that can sign a mined block
@@ -85,41 +64,6 @@ mod tests {
 					(head.inner_lite.next_epoch_id, head.next_bps.as_ref().unwrap().clone()),
 				),
 			}
-		}
-	}
-
-	// dummy implementation (at least for now)
-	impl StateStorage for MockLightClient {
-		fn get_head(&self) -> &LightClientBlockView {
-			self.storage.get_head()
-		}
-
-		fn set_new_head(&mut self, new_head: LightClientBlockView) {
-			self.storage.set_new_head(new_head)
-		}
-
-		fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
-			todo!()
-		}
-
-		fn insert_epoch_block_producers(
-			&mut self,
-			_epoch: CryptoHash,
-			_bps: Vec<ValidatorStakeView>,
-		) {
-			todo!()
-		}
-	}
-
-	impl StateTransitionVerificator for MockLightClient {
-		type D = Sha256Digest;
-		type HF = MockedHostFunctions;
-
-		fn validate_head(
-			&mut self,
-			_block_view: &LightClientBlockView,
-		) -> LiteClientResult<bool> {
-			Ok(true)
 		}
 	}
 

@@ -1,45 +1,40 @@
 use crate::{
-	block_validation::validate_light_block, merkle_tree::compute_root_from_path,
-	storage::StateStorage, LiteClientResult,
+	block_validation::validate_light_block, error::NearLiteClientError,
+	merkle_tree::compute_root_from_path, LiteClientResult,
 };
-use near_merkle_proofs::{HostFunctions, ProofBatchVerifier};
+use near_merkle_proofs::ProofBatchVerifier;
 use near_primitives_wasm_friendly::{
-	CryptoHash, Digest, ExecutionOutcomeView, LightClientBlockView, MerklePath, OutcomeProof,
+	CryptoHash, ExecutionOutcomeView, HostFunctions, LightClientBlockView, MerklePath,
+	OutcomeProof, ValidatorStakeView,
 };
-use sp_std::{borrow::ToOwned, vec, vec::Vec};
+use sp_std::{borrow::ToOwned, collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use borsh::BorshSerialize;
 
 fn validate_head<H: HostFunctions>(
 	head: &LightClientBlockView,
 	block_view: &LightClientBlockView,
+	epooch_block_producers: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<()> {
-	let epoch_block_producers = self.get_epoch_block_producers();
-	if !validate_light_block::<Self::D>(head, block_view, epoch_block_producers)? {
+	if !validate_light_block::<H>(head, block_view, epooch_block_producers)? {
 		Err(())?
 	}
-
-	self.set_new_head(block_view.clone());
-
-	#[cfg(test)]
-	log::info!("updated head to height = {}", self.get_head().inner_lite.height);
-
 	Ok(())
 }
 
-fn validate_transaction(
+fn validate_transaction<H: HostFunctions>(
 	outcome_proof: &OutcomeProof,
 	outcome_root_proof: MerklePath,
 	expected_block_outcome_root: CryptoHash,
 ) -> LiteClientResult<()> {
 	let execution_outcome_hash =
-		calculate_execution_outcome_hash::<Self::D>(&outcome_proof.outcome, outcome_proof.id);
+		calculate_execution_outcome_hash::<H>(&outcome_proof.outcome, outcome_proof.id);
 	let shard_outcome_root =
-		compute_root_from_path::<Self::D>(&outcome_proof.proof, execution_outcome_hash)?;
+		compute_root_from_path::<H>(&outcome_proof.proof, execution_outcome_hash)?;
 
-	let block_outcome_root = compute_root_from_path::<Self::D>(
+	let block_outcome_root = compute_root_from_path::<H>(
 		&outcome_root_proof,
-		Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
+		H::sha256(&shard_outcome_root.try_to_vec().unwrap())
 			.as_slice()
 			.try_into()
 			.unwrap(),
@@ -53,28 +48,30 @@ fn validate_transaction(
 	Ok(())
 }
 
-fn validate_transactions(
+fn validate_transactions<H: HostFunctions>(
 	outcome_proofs: Vec<OutcomeProof>,
 	outcome_root_proofs: Vec<MerklePath>,
 	expected_block_outcome_root: CryptoHash,
 ) -> LiteClientResult<()> {
 	if outcome_proofs.len() != outcome_root_proofs.len() {
-		Err(())?
+		return Err(NearLiteClientError::ProofVerificationError(String::from(
+			"outcome proof length != outcome_root_proofs length",
+		)));
 	}
 	if outcome_proofs.len() == 0 {
 		// TODO: validate this
-		Err(())?
+		return Err(NearLiteClientError::ProofVerificationError(String::from(
+			"empty outcome proof",
+		)));
 	}
 
 	let mut execution_outcome_hashes = vec![];
 	for outcome_proof in &outcome_proofs {
-		execution_outcome_hashes.push(calculate_execution_outcome_hash::<Self::D>(
-			&outcome_proof.outcome,
-			outcome_proof.id,
-		));
+		execution_outcome_hashes
+			.push(calculate_execution_outcome_hash(&outcome_proof.outcome, outcome_proof.id));
 	}
 
-	let mut proof_verifier_shard_outcome = ProofBatchVerifier::<Self::HF>::new();
+	let mut proof_verifier_shard_outcome = ProofBatchVerifier::new();
 	let outcome_proofs_iter = outcome_proofs.iter().map(|op| &op.proof);
 	proof_verifier_shard_outcome.update_cache(outcome_proofs_iter.clone())?;
 
@@ -94,7 +91,7 @@ fn validate_transactions(
 		Err(())?
 	}
 
-	let mut block_outcome_root_verifier = ProofBatchVerifier::<Self::HF>::new();
+	let mut block_outcome_root_verifier = ProofBatchVerifier::new();
 	let outcome_root_proofs_iter = outcome_root_proofs.iter();
 	block_outcome_root_verifier.update_cache(outcome_root_proofs_iter.clone())?;
 
@@ -103,7 +100,7 @@ fn validate_transactions(
 	{
 		let block_outcome_root = block_outcome_root_verifier.calculate_root_hash(
 			&outcome_root_proof,
-			Self::D::digest(shard_outcome_root.try_to_vec().unwrap())
+			H::sha256(&shard_outcome_root.try_to_vec().unwrap())
 				.as_slice()
 				.try_into()
 				.unwrap(),
@@ -121,7 +118,7 @@ fn validate_transactions(
 // Currently there is no function that calculates it in the `near-primitive` module
 // hence, this is a direct port from the solidity implementation of the rainbow
 // bridge written in solidity.
-fn calculate_execution_outcome_hash<D: Digest>(
+fn calculate_execution_outcome_hash<H: HostFunctions>(
 	execution_outcome: &ExecutionOutcomeView,
 	tx_hash: CryptoHash,
 ) -> CryptoHash {
@@ -136,7 +133,7 @@ fn calculate_execution_outcome_hash<D: Digest>(
 			)
 		);
 	*/
-	let merkelization_hashes = calculate_merklelization_hashes::<D>(execution_outcome);
+	let merkelization_hashes = calculate_merklelization_hashes::<H>(execution_outcome);
 
 	// outcome.id is the tx hash or receipt id
 	// let outcome = vec![merkelization_hashes.len() as u32 + 1, tx_hash, ];
@@ -145,8 +142,8 @@ fn calculate_execution_outcome_hash<D: Digest>(
 		.flat_map(|h| h.as_ref().to_owned())
 		.collect::<Vec<u8>>();
 
-	D::digest(
-		[
+	H::sha256(
+		&[
 			(merkelization_hashes.len() as u32 + 1).to_le_bytes().as_ref(),
 			tx_hash.as_ref(),
 			&pack_merklelization_hashes,
@@ -158,7 +155,7 @@ fn calculate_execution_outcome_hash<D: Digest>(
 	.unwrap()
 }
 
-fn calculate_merklelization_hashes<D: Digest>(
+fn calculate_merklelization_hashes<H: HostFunctions>(
 	execution_outcome: &ExecutionOutcomeView,
 ) -> Vec<CryptoHash> {
 	let logs_payload = vec![
@@ -172,12 +169,13 @@ fn calculate_merklelization_hashes<D: Digest>(
 	]
 	.concat();
 
-	let first_element_merkelization_hashes = D::digest(logs_payload).as_slice().try_into().unwrap();
+	let first_element_merkelization_hashes =
+		H::sha256(&logs_payload).as_slice().try_into().unwrap();
 	execution_outcome
 		.logs
 		.iter()
 		.fold(vec![first_element_merkelization_hashes], |mut acc, log| {
-			acc.push(D::digest(log).as_slice().try_into().unwrap());
+			acc.push(H::sha256(log.as_ref()).as_slice().try_into().unwrap());
 			acc
 		})
 }
@@ -185,7 +183,7 @@ fn calculate_merklelization_hashes<D: Digest>(
 mod test {
 	use super::*;
 
-	use crate::{block_validation::SubstrateDigest, test_utils::MockedHostFunctions};
+	use crate::{client::NearHostFunctions, test_utils::MockedHostFunctions};
 	use borsh::BorshDeserialize;
 	use near_primitives::{
 		hash::CryptoHash as NearCryptoHash,
@@ -205,36 +203,6 @@ mod test {
 		Ok(
 			serde_json::from_str::<ResultFromRpc>(client_block_response)?.result, // .into(),
 		)
-	}
-
-	struct VeryDummyLiteClient;
-	impl StateStorage for VeryDummyLiteClient {
-		fn get_head(&self) -> &LightClientBlockView {
-			todo!()
-		}
-
-		fn set_new_head(&mut self, _new_head: LightClientBlockView) {
-			todo!()
-		}
-
-		fn get_epoch_block_producers(
-			&self,
-		) -> &std::collections::BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
-			todo!()
-		}
-
-		fn insert_epoch_block_producers(
-			&mut self,
-			_epoch: CryptoHash,
-			_bps: Vec<ValidatorStakeView>,
-		) {
-			todo!()
-		}
-	}
-
-	impl StateTransitionVerificator for VeryDummyLiteClient {
-		type D = SubstrateDigest;
-		type HF = MockedHostFunctions;
 	}
 
 	#[test]
@@ -270,7 +238,7 @@ mod test {
 			bs58::decode("8QtUAFNktUqLp9fg9ohp5PAHjemxMcG6ryW2z5DcUK6C").into_vec().unwrap();
 		assert_eq!(
 			CryptoHash::try_from(expected_execution_outcome_hash.as_ref()).unwrap(),
-			calculate_execution_outcome_hash::<SubstrateDigest>(&execution_outcome, tx_hash)
+			calculate_execution_outcome_hash::<MockedHostFunctions>(&execution_outcome, tx_hash)
 		);
 	}
 
@@ -315,7 +283,7 @@ mod test {
 
 		assert_eq!(
 			expected_block_outcome_root,
-			compute_root_from_path::<SubstrateDigest>(&path, item_hash).unwrap()
+			compute_root_from_path::<MockedHostFunctions>(&path, item_hash).unwrap()
 		);
 	}
 
@@ -413,23 +381,20 @@ mod test {
 				.as_ref(),
 		)
 		.unwrap();
-		let dummy_lite_client = VeryDummyLiteClient {};
-		assert!(dummy_lite_client
-			.validate_transaction(
-				&outcome_proof,
-				outcome_root_proof.clone(),
-				expected_block_outcome_root,
-			)
-			.unwrap());
+		assert!(validate_transaction::<NearHostFunctions>(
+			&outcome_proof,
+			outcome_root_proof.clone(),
+			expected_block_outcome_root,
+		)
+		.is_ok());
 
 		// test trivial version of validate transactions (only one transaction)
-		assert!(dummy_lite_client
-			.validate_transactions(
-				vec![outcome_proof],
-				vec![outcome_root_proof],
-				expected_block_outcome_root,
-			)
-			.unwrap());
+		assert!(validate_transactions::<NearHostFunctions>(
+			vec![outcome_proof],
+			vec![outcome_root_proof],
+			expected_block_outcome_root,
+		)
+		.is_ok());
 	}
 
 	#[test]
@@ -665,16 +630,14 @@ mod test {
 				.as_ref(),
 		)
 		.unwrap();
-		let dummy_lite_client = VeryDummyLiteClient {};
 
 		// test trivial version of validate transactions (only one transaction)
-		assert!(dummy_lite_client
-			.validate_transactions(
-				vec![outcome_proof_1, outcome_proof_2],
-				vec![outcome_root_proof_1, outcome_root_proof_2],
-				expected_block_outcome_root,
-			)
-			.unwrap());
+		assert!(validate_transactions(
+			vec![outcome_proof_1, outcome_proof_2],
+			vec![outcome_root_proof_1, outcome_root_proof_2],
+			expected_block_outcome_root,
+		)
+		.unwrap());
 	}
 
 	#[test]
@@ -935,28 +898,25 @@ mod test {
 				.as_ref(),
 		)
 		.unwrap();
-		let dummy_lite_client = VeryDummyLiteClient {};
 
 		// will fail since gas burn was modified
 		assert_eq!(
-			dummy_lite_client
-				.validate_transactions(
-					vec![outcome_proof_1_modified, outcome_proof_2.clone()],
-					vec![outcome_root_proof_1.clone(), outcome_root_proof_2.clone()],
-					expected_block_outcome_root,
-				)
-				.is_err(),
+			validate_transactions(
+				vec![outcome_proof_1_modified, outcome_proof_2.clone()],
+				vec![outcome_root_proof_1.clone(), outcome_root_proof_2.clone()],
+				expected_block_outcome_root,
+			)
+			.is_err(),
 			true,
 		);
 
 		assert_eq!(
-			dummy_lite_client
-				.validate_transactions(
-					vec![outcome_proof_1, outcome_proof_2],
-					vec![outcome_root_proof_1, outcome_root_proof_2],
-					expected_block_outcome_root_modified,
-				)
-				.unwrap(),
+			validate_transactions(
+				vec![outcome_proof_1, outcome_proof_2],
+				vec![outcome_root_proof_1, outcome_root_proof_2],
+				expected_block_outcome_root_modified,
+			)
+			.unwrap(),
 			false,
 		);
 	}
@@ -983,33 +943,6 @@ mod test {
 					.collect(),
 				}
 			}
-		}
-
-		impl StateStorage for LessDummyLiteClient {
-			fn get_head(&self) -> &LightClientBlockView {
-				&self.head
-			}
-
-			fn set_new_head(&mut self, new_head: LightClientBlockView) {
-				self.head = new_head;
-			}
-
-			fn get_epoch_block_producers(&self) -> &BTreeMap<CryptoHash, Vec<ValidatorStakeView>> {
-				&self.block_producers_per_epoch
-			}
-
-			fn insert_epoch_block_producers(
-				&mut self,
-				epoch: CryptoHash,
-				bps: Vec<ValidatorStakeView>,
-			) {
-				self.block_producers_per_epoch.insert(epoch, bps);
-			}
-		}
-
-		impl StateTransitionVerificator for LessDummyLiteClient {
-			type D = SubstrateDigest;
-			type HF = MockedHostFunctions;
 		}
 
 		const CLIENT_RESPONSE_PREVIOUS_EPOCH: &str = r#"

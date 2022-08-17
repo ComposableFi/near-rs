@@ -30,7 +30,6 @@ default = ["std"]
 std = [
     "borsh/std",
     "sp-io/std",
-    "sp-io/disable_panic_handler",
     "sp-core/std",
     "sp-std/std",
 ]

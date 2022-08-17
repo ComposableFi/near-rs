@@ -1,12 +1,12 @@
+use alloc::string::String;
 use borsh::maybestd::io::Error as BorshError;
 use near_primitives_wasm_friendly::ConversionError;
-use alloc::string::String;
 
 #[derive(Debug)]
 pub enum NearLiteClientError {
 	Borsh(BorshError),
 	Conversion(ConversionError),
-	ProofVerification(String),
+	ProofVerificationError(String),
 }
 
 // Had to implement this variant manually due to some traits missing on the
@@ -27,6 +27,6 @@ impl From<ConversionError> for NearLiteClientError {
 
 impl From<String> for NearLiteClientError {
 	fn from(err: String) -> Self {
-		Self::ProofVerification(err)
+		Self::ProofVerificationError(err)
 	}
 }
