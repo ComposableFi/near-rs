@@ -11,18 +11,15 @@ use sp_std::{borrow::ToOwned, collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use borsh::BorshSerialize;
 
-fn validate_head<H: HostFunctions>(
+pub fn validate_head<H: HostFunctions>(
 	head: &LightClientBlockView,
 	block_view: &LightClientBlockView,
 	epooch_block_producers: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 ) -> LiteClientResult<()> {
-	if !validate_light_block::<H>(head, block_view, epooch_block_producers)? {
-		Err(())?
-	}
-	Ok(())
+	validate_light_block::<H>(head, block_view, epooch_block_producers)
 }
 
-fn validate_transaction<H: HostFunctions>(
+pub fn validate_transaction<H: HostFunctions>(
 	outcome_proof: &OutcomeProof,
 	outcome_root_proof: MerklePath,
 	expected_block_outcome_root: CryptoHash,
@@ -42,13 +39,15 @@ fn validate_transaction<H: HostFunctions>(
 
 	// TODO: validate that the block_outcome_root is present in the state
 	if expected_block_outcome_root != block_outcome_root {
-		Err(())?
+		return Err(NearLiteClientError::TransactionValidation(String::from(
+			"expected_block_outcome_root != block_outcome_root",
+		)));
 	}
 
 	Ok(())
 }
 
-fn validate_transactions<H: HostFunctions>(
+pub fn validate_transactions<H: HostFunctions>(
 	outcome_proofs: Vec<OutcomeProof>,
 	outcome_root_proofs: Vec<MerklePath>,
 	expected_block_outcome_root: CryptoHash,
@@ -68,10 +67,10 @@ fn validate_transactions<H: HostFunctions>(
 	let mut execution_outcome_hashes = vec![];
 	for outcome_proof in &outcome_proofs {
 		execution_outcome_hashes
-			.push(calculate_execution_outcome_hash(&outcome_proof.outcome, outcome_proof.id));
+			.push(calculate_execution_outcome_hash::<H>(&outcome_proof.outcome, outcome_proof.id));
 	}
 
-	let mut proof_verifier_shard_outcome = ProofBatchVerifier::new();
+	let mut proof_verifier_shard_outcome = ProofBatchVerifier::<H>::new();
 	let outcome_proofs_iter = outcome_proofs.iter().map(|op| &op.proof);
 	proof_verifier_shard_outcome.update_cache(outcome_proofs_iter.clone())?;
 
@@ -88,10 +87,12 @@ fn validate_transactions<H: HostFunctions>(
 	// confirm that all shard outcome roots are the same
 	let shard_outcome_root_sample = &shard_outcome_roots[0];
 	if shard_outcome_roots.iter().skip(1).any(|hash| hash != shard_outcome_root_sample) {
-		Err(())?
+		return Err(NearLiteClientError::TransactionValidation(String::from(
+			"not all shard outcomes match",
+		)));
 	}
 
-	let mut block_outcome_root_verifier = ProofBatchVerifier::new();
+	let mut block_outcome_root_verifier = ProofBatchVerifier::<H>::new();
 	let outcome_root_proofs_iter = outcome_root_proofs.iter();
 	block_outcome_root_verifier.update_cache(outcome_root_proofs_iter.clone())?;
 
@@ -107,7 +108,9 @@ fn validate_transactions<H: HostFunctions>(
 		)?;
 
 		if expected_block_outcome_root != block_outcome_root {
-			Err(())?
+			return Err(NearLiteClientError::TransactionValidation(String::from(
+				"expected_block_outcome_root != block_outcome_root",
+			)));
 		}
 	}
 	// TODO: validate that the block_outcome_root is present in the state
@@ -183,7 +186,7 @@ fn calculate_merklelization_hashes<H: HostFunctions>(
 mod test {
 	use super::*;
 
-	use crate::{client::NearHostFunctions, test_utils::MockedHostFunctions};
+	use crate::test_utils::MockedHostFunctions;
 	use borsh::BorshDeserialize;
 	use near_primitives::{
 		hash::CryptoHash as NearCryptoHash,
@@ -381,7 +384,7 @@ mod test {
 				.as_ref(),
 		)
 		.unwrap();
-		assert!(validate_transaction::<NearHostFunctions>(
+		assert!(validate_transaction::<MockedHostFunctions>(
 			&outcome_proof,
 			outcome_root_proof.clone(),
 			expected_block_outcome_root,
@@ -389,7 +392,7 @@ mod test {
 		.is_ok());
 
 		// test trivial version of validate transactions (only one transaction)
-		assert!(validate_transactions::<NearHostFunctions>(
+		assert!(validate_transactions::<MockedHostFunctions>(
 			vec![outcome_proof],
 			vec![outcome_root_proof],
 			expected_block_outcome_root,
@@ -632,12 +635,12 @@ mod test {
 		.unwrap();
 
 		// test trivial version of validate transactions (only one transaction)
-		assert!(validate_transactions(
+		assert!(validate_transactions::<MockedHostFunctions>(
 			vec![outcome_proof_1, outcome_proof_2],
 			vec![outcome_root_proof_1, outcome_root_proof_2],
 			expected_block_outcome_root,
 		)
-		.unwrap());
+		.is_ok());
 	}
 
 	#[test]
@@ -900,33 +903,27 @@ mod test {
 		.unwrap();
 
 		// will fail since gas burn was modified
-		assert_eq!(
-			validate_transactions(
-				vec![outcome_proof_1_modified, outcome_proof_2.clone()],
-				vec![outcome_root_proof_1.clone(), outcome_root_proof_2.clone()],
-				expected_block_outcome_root,
-			)
-			.is_err(),
-			true,
-		);
+		assert!(validate_transactions::<MockedHostFunctions>(
+			vec![outcome_proof_1_modified, outcome_proof_2.clone()],
+			vec![outcome_root_proof_1.clone(), outcome_root_proof_2.clone()],
+			expected_block_outcome_root,
+		)
+		.is_err(),);
 
-		assert_eq!(
-			validate_transactions(
-				vec![outcome_proof_1, outcome_proof_2],
-				vec![outcome_root_proof_1, outcome_root_proof_2],
-				expected_block_outcome_root_modified,
-			)
-			.unwrap(),
-			false,
-		);
+		assert!(validate_transactions::<MockedHostFunctions>(
+			vec![outcome_proof_1, outcome_proof_2],
+			vec![outcome_root_proof_1, outcome_root_proof_2],
+			expected_block_outcome_root_modified,
+		)
+		.is_err());
 	}
 
 	#[test]
 	fn test_validate_light_block() {
 		struct LessDummyLiteClient {
-			head: LightClientBlockView,
+			pub head: LightClientBlockView,
 			/// set of validators that can sign a mined block
-			block_producers_per_epoch: BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
+			pub block_producers_per_epoch: BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
 		}
 
 		impl LessDummyLiteClient {
@@ -2474,9 +2471,27 @@ mod test {
 
 		let mut light_client =
 			LessDummyLiteClient::new_from_checkpoint(client_block_view_checkpoint);
-		assert!(light_client.validate_head(&client_block_view).unwrap());
-		assert!(light_client.validate_head(&client_block_view_next_epoch).unwrap());
+		assert!(validate_head::<MockedHostFunctions>(
+			&light_client.head,
+			&client_block_view,
+			&light_client.block_producers_per_epoch
+		)
+		.is_ok());
+		assert!(validate_head::<MockedHostFunctions>(
+			&light_client.head,
+			&client_block_view_next_epoch,
+			&light_client.block_producers_per_epoch
+		)
+		.is_ok());
+
+		// update head
+		light_client.head = client_block_view_next_epoch;
 		// previous epoch should fail
-		assert!(!light_client.validate_head(&client_block_view).unwrap());
+		assert!(validate_head::<MockedHostFunctions>(
+			&light_client.head,
+			&client_block_view,
+			&light_client.block_producers_per_epoch,
+		)
+		.is_err());
 	}
 }

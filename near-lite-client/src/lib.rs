@@ -24,18 +24,17 @@ extern crate alloc;
 
 mod block_validation;
 mod checkpoint;
-mod client;
 mod error;
 mod merkle_tree;
 #[cfg(test)]
-mod test_utils;
+pub mod test_utils;
 mod verifier;
 
 pub use checkpoint::TrustedCheckpoint;
-pub use client::LightClient;
 pub use near_primitives_wasm_friendly::{
 	CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
 };
+pub use verifier::{validate_head, validate_transaction, validate_transactions};
 
 use crate::error::NearLiteClientError;
 
@@ -43,7 +42,13 @@ pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 
 pub mod prelude {
 	pub use super::{
-		CryptoHash, LightClient, LightClientBlockView, MerklePath, OutcomeProof, Signature,
+		validate_head, validate_transaction, validate_transactions, CryptoHash,
+		LightClientBlockView, MerklePath, NearLiteClientTrait, OutcomeProof, Signature,
 		TrustedCheckpoint, ValidatorStakeView,
 	};
+}
+
+pub trait NearLiteClientTrait {
+	fn new_from_checkpoint(checkpoint: TrustedCheckpoint, heights_to_track: usize) -> Self;
+	fn current_block_height(&self) -> u64;
 }

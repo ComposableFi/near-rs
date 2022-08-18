@@ -7,6 +7,9 @@ pub enum NearLiteClientError {
 	Borsh(BorshError),
 	Conversion(ConversionError),
 	ProofVerificationError(String),
+	InvalidLiteBlock(String),
+	SignatureVerification(String),
+	TransactionValidation(String),
 }
 
 // Had to implement this variant manually due to some traits missing on the

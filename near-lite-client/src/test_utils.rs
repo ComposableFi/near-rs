@@ -3,7 +3,7 @@ use near_primitives_wasm_friendly::HostFunctions;
 #[cfg(test)]
 pub struct MockedHostFunctions;
 
-#[cfg(test)]
+#[cfg(any(test))]
 impl HostFunctions for MockedHostFunctions {
 	fn sha256(data: &[u8]) -> [u8; 32] {
 		use sha2::Digest;

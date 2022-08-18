@@ -335,9 +335,9 @@ mod tests {
 		}
 
 		fn verify(
-			&self,
-			data: impl AsRef<[u8]>,
-			public_key: near_primitives_wasm_friendly::PublicKey,
+			_signature: near_primitives_wasm_friendly::Signature,
+			_data: impl AsRef<[u8]>,
+			_public_key: near_primitives_wasm_friendly::PublicKey,
 		) -> bool {
 			todo!()
 		}

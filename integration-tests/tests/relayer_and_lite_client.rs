@@ -3,15 +3,14 @@ use std::{
 	time::Duration,
 };
 
+use integration_tests::{LightClient, NearHostFunctions};
 use near_lite_relayer::{
 	blockchain_connector::{BlockchainConnector, NearNetwork},
 	state::LightClientState,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use near_lite_client::{
-	LightClient, LightClientBlockView, StateTransitionVerificator, TrustedCheckpoint,
-};
+use near_lite_client::prelude::*;
 
 /// ## Both Relayer and Lite Client
 ///
@@ -83,12 +82,21 @@ async fn both_relayer_and_lite_client() {
 				.unwrap();
 				if light_client_block_view.inner_lite.height <= lite_client.current_block_height() {
 					log::info!("block has not yet been updated");
-					continue
+					continue;
 				}
 
 				log::info!("validating block height={}", light_client_block_view.inner_lite.height);
 
-				assert!(lite_client.validate_head(&light_client_block_view).unwrap());
+				let head = &lite_client.head;
+				let epoch_block_producers = &lite_client.epoch_block_producers;
+				assert!(validate_head::<NearHostFunctions>(
+					head,
+					&light_client_block_view,
+					epoch_block_producers
+				)
+				.is_ok());
+
+				lite_client.update_head(head.clone());
 
 				log::info!(
 					"validated block height={} and head is on height={}",
@@ -97,7 +105,7 @@ async fn both_relayer_and_lite_client() {
 				);
 				counter += 1;
 				if counter == 3 {
-					break
+					break;
 				}
 			}
 		})

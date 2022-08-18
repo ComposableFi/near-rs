@@ -1,7 +1,7 @@
 use near_primitives_wasm_friendly::HostFunctions;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-use crate::LiteClientResult;
+use crate::{error::NearLiteClientError, LiteClientResult};
 
 use near_primitives_wasm_friendly::{
 	ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView,
@@ -9,14 +9,11 @@ use near_primitives_wasm_friendly::{
 
 use borsh::BorshSerialize;
 
-#[cfg(test)]
-use sha2::{Digest as DigestTrait, Sha256};
-
 pub fn validate_light_block<H: HostFunctions>(
 	head: &LightClientBlockView,
 	block_view: &LightClientBlockView,
 	epoch_block_producers_map: &BTreeMap<CryptoHash, Vec<ValidatorStakeView>>,
-) -> LiteClientResult<bool> {
+) -> LiteClientResult<()> {
 	//The light client updates its head with the information from LightClientBlockView iff:
 
 	// 1. The height of the block is higher than the height of the current head;
@@ -35,21 +32,27 @@ pub fn validate_light_block<H: HostFunctions>(
 
 	// (1)
 	if block_view.inner_lite.height <= head.inner_lite.height {
-		return Ok(false);
+		return Err(NearLiteClientError::InvalidLiteBlock(String::from(
+			"block view height is not ahead of the head's height",
+		)));
 	}
 
 	// (2)
 	if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
 		.contains(&block_view.inner_lite.epoch_id)
 	{
-		return Ok(false);
+		return Err(NearLiteClientError::InvalidLiteBlock(String::from(
+			"block view epoch id not present in the head",
+		)));
 	}
 
 	// (3)
 	if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id
 		&& block_view.next_bps.is_none()
 	{
-		return Ok(false);
+		return Err(NearLiteClientError::InvalidLiteBlock(String::from(
+			"block view epoch id is not the next epoch",
+		)));
 	}
 
 	//  (4) and (5)
@@ -77,13 +80,17 @@ pub fn validate_light_block<H: HostFunctions>(
 			.unwrap()
 			.verify(&approval_message, validator_public_key.clone())
 		{
-			return Ok(false);
+			return Err(NearLiteClientError::SignatureVerification(String::from(
+				"signature is not valid",
+			)));
 		}
 	}
 
 	let threshold = total_stake * 2 / 3;
 	if approved_stake <= threshold {
-		return Ok(false);
+		return Err(NearLiteClientError::InvalidLiteBlock(String::from(
+			"block is not final: stake threshold is not reached",
+		)));
 	}
 
 	// # (6)
@@ -93,10 +100,12 @@ pub fn validate_light_block<H: HostFunctions>(
 		if H::sha256(&block_view_next_bps_serialized).as_slice()
 			!= block_view.inner_lite.next_bp_hash.as_ref()
 		{
-			return Ok(false);
+			return Err(NearLiteClientError::InvalidLiteBlock(String::from(
+				"inccorect next bp hash in block view",
+			)));
 		}
 	}
-	Ok(true)
+	Ok(())
 }
 
 pub fn reconstruct_light_client_block_view_fields<H: HostFunctions>(
