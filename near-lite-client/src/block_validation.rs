@@ -1,3 +1,4 @@
+use alloc::string::String;
 use near_primitives_wasm_friendly::HostFunctions;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 

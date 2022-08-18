@@ -2,11 +2,13 @@ use crate::{
 	block_validation::validate_light_block, error::NearLiteClientError,
 	merkle_tree::compute_root_from_path, LiteClientResult,
 };
+use alloc::string::String;
 use near_merkle_proofs::ProofBatchVerifier;
 use near_primitives_wasm_friendly::{
 	CryptoHash, ExecutionOutcomeView, HostFunctions, LightClientBlockView, MerklePath,
 	OutcomeProof, ValidatorStakeView,
 };
+
 use sp_std::{borrow::ToOwned, collections::btree_map::BTreeMap, vec, vec::Vec};
 
 use borsh::BorshSerialize;
