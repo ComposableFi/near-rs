@@ -1,7 +1,11 @@
+use integration_tests::{LightClient, NearHostFunctions};
 use near_lite_relayer::blockchain_connector::{BlockchainConnector, NearNetwork};
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use near_lite_client::{CryptoHash, MerklePath, OutcomeProof, TrustedCheckpoint};
+use near_lite_client::{
+	validate_transaction, CryptoHash, MerklePath, NearLiteClientTrait, OutcomeProof,
+	TrustedCheckpoint,
+};
 
 /// ## Both Relayer and Lite Client - testing tx validation
 ///
@@ -27,11 +31,11 @@ async fn both_relayer_and_lite_client_validate_tx() {
 		BorshDeserialize::try_from_slice(&serialized_block_view).unwrap();
 
 	let trusted_checkpoint = TrustedCheckpoint(block_view_for_lite_client);
-	let lite_client = LightClient::new_from_checkpoint(trusted_checkpoint, 10);
+	let _ = LightClient::new_from_checkpoint(trusted_checkpoint, 10);
 	// find a transaction in a block that has been validated
 	let mut height = almost_latest_height - 500;
 
-	'l: loop {
+	loop {
 		let chunk_ids = blockchain_connector.find_chunk_ids_with_burned_gas(height).unwrap();
 
 		for chunk_id in chunk_ids {
@@ -63,15 +67,14 @@ async fn both_relayer_and_lite_client_validate_tx() {
 				)
 				.unwrap();
 
-				lite_client
-					.validate_transaction(
-						&outcome_proof,
-						outcome_root_proof,
-						expected_block_outcome_root,
-					)
-					.unwrap();
+				validate_transaction::<NearHostFunctions>(
+					&outcome_proof,
+					outcome_root_proof,
+					expected_block_outcome_root,
+				)
+				.unwrap();
 
-				break 'l;
+				return;
 			}
 		}
 		height -= 1;
