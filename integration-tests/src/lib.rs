@@ -6,7 +6,7 @@ use alloc::collections::BTreeMap;
 use near_lite_client::{
 	CryptoHash, LightClientBlockView, NearLiteClientTrait, TrustedCheckpoint, ValidatorStakeView,
 };
-use near_primitives_wasm_friendly::HostFunctions;
+use near_primitives_wasm::HostFunctions;
 
 pub struct NearHostFunctions;
 

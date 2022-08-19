@@ -27,7 +27,7 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Check NEAR primitives wasm friendly
-        run: cargo check --no-default-features --target=wasm32-unknown-unknown --manifest-path=./near-primitives-wasm-friendly/Cargo.toml
+        run: cargo check --no-default-features --target=wasm32-unknown-unknown --manifest-path=./near-primitives-wasm/Cargo.toml
       - name: Check NEAR Merkle Proofs
         run: cargo check --no-default-features --target=wasm32-unknown-unknown --manifest-path=./near-merkle-proofs/Cargo.toml
       - name: Check NEAR light client

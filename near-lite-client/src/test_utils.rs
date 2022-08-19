@@ -1,4 +1,4 @@
-use near_primitives_wasm_friendly::HostFunctions;
+use near_primitives_wasm::HostFunctions;
 
 #[cfg(test)]
 pub struct MockedHostFunctions;
@@ -11,9 +11,9 @@ impl HostFunctions for MockedHostFunctions {
 	}
 
 	fn verify(
-		signature: near_primitives_wasm_friendly::Signature,
+		signature: near_primitives_wasm::Signature,
 		data: impl AsRef<[u8]>,
-		public_key: near_primitives_wasm_friendly::PublicKey,
+		public_key: near_primitives_wasm::PublicKey,
 	) -> bool {
 		todo!()
 	}

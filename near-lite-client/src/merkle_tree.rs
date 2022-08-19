@@ -1,6 +1,6 @@
 use crate::LiteClientResult;
 use borsh::BorshSerialize;
-use near_primitives_wasm_friendly::{Direction, HostFunctions, MerkleHash, MerklePathItem};
+use near_primitives_wasm::{Direction, HostFunctions, MerkleHash, MerklePathItem};
 use sp_std::vec::Vec;
 
 pub fn compute_root_from_path<H: HostFunctions>(

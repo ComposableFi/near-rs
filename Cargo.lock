@@ -1009,7 +1009,7 @@ dependencies = [
  "near-lite-client",
  "near-lite-relayer",
  "near-primitives 0.12.0",
- "near-primitives-wasm-friendly",
+ "near-primitives-wasm",
  "sha2 0.10.2",
  "tokio",
 ]
@@ -1283,7 +1283,7 @@ dependencies = [
  "near-crypto 0.12.0",
  "near-merkle-proofs",
  "near-primitives 0.12.0",
- "near-primitives-wasm-friendly",
+ "near-primitives-wasm",
  "serde",
  "serde_json",
  "sha2 0.10.2",
@@ -1318,7 +1318,7 @@ dependencies = [
  "elastic-array",
  "hex",
  "near-primitives 0.14.0",
- "near-primitives-wasm-friendly",
+ "near-primitives-wasm",
  "no-std-compat",
  "sha2 0.10.2",
 ]
@@ -1412,7 +1412,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "near-primitives-wasm-friendly"
+name = "near-primitives-wasm"
 version = "0.1.0"
 dependencies = [
  "borsh",

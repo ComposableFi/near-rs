@@ -11,10 +11,10 @@ no-std-compat = {version = "0.4.1", features = [ "alloc", "compat_hash" ], defau
 elastic-array = {version = "0.11", default-features = false }
 core2 = {version = "0.3.2", default-features = false }
 
-near-primitives-wasm-friendly = {path = "../near-primitives-wasm-friendly", default-features = false }
+near-primitives-wasm = {path = "../near-primitives-wasm", default-features = false }
 
 [dev-dependencies]
 sha2 = "0.10.2"
 hex = "0.4"
-near-primitives-wasm-friendly = {path = "../near-primitives-wasm-friendly"}
+near-primitives-wasm = {path = "../near-primitives-wasm"}
 near-primitives = "0.14"

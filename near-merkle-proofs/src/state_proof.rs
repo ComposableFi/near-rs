@@ -2,7 +2,7 @@
 //! verbatim as much as possible. There has been some tweaks in order
 //! to make it no_std compatible.
 
-use near_primitives_wasm_friendly::{CryptoHash, HostFunctions};
+use near_primitives_wasm::{CryptoHash, HostFunctions};
 use no_std_compat as std;
 use std::{string::String, vec::Vec};
 
@@ -289,9 +289,9 @@ mod tests {
 		}
 
 		fn verify(
-			signature: near_primitives_wasm_friendly::Signature,
+			signature: near_primitives_wasm::Signature,
 			data: impl AsRef<[u8]>,
-			public_key: near_primitives_wasm_friendly::PublicKey,
+			public_key: near_primitives_wasm::PublicKey,
 		) -> bool {
 			todo!()
 		}

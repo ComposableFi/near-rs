@@ -14,7 +14,7 @@ use borsh::BorshSerialize;
 use core::marker::PhantomData;
 use std::{collections::HashMap, string::String, vec::Vec};
 
-use near_primitives_wasm_friendly::{CryptoHash, Direction, HostFunctions, MerklePath};
+use near_primitives_wasm::{CryptoHash, Direction, HostFunctions, MerklePath};
 
 type Level = usize;
 type Index = usize;
@@ -304,7 +304,7 @@ fn hash_borsh<T: BorshSerialize, HF: HostFunctions>(items: &(T, T)) -> CryptoHas
 mod tests {
 	use borsh::BorshDeserialize;
 	use near_primitives::merkle::{compute_root_from_path_and_item, merklize};
-	use near_primitives_wasm_friendly::MerklePathItem;
+	use near_primitives_wasm::MerklePathItem;
 
 	use super::*;
 
@@ -337,9 +337,9 @@ mod tests {
 		}
 
 		fn verify(
-			_signature: near_primitives_wasm_friendly::Signature,
+			_signature: near_primitives_wasm::Signature,
 			_data: impl AsRef<[u8]>,
-			_public_key: near_primitives_wasm_friendly::PublicKey,
+			_public_key: near_primitives_wasm::PublicKey,
 		) -> bool {
 			todo!()
 		}

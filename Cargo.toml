@@ -4,7 +4,7 @@ members = [
     "near-lite-relayer",
     "near-lite-client",
     "near-merkle-proofs",
-    "near-primitives-wasm-friendly",
+    "near-primitives-wasm",
 ]
 
 resolver = "2"

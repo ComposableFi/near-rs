@@ -1,5 +1,5 @@
 [package]
-name = "near-primitives-wasm-friendly"
+name = "near-primitives-wasm"
 version = "0.1.0"
 edition = "2021"
 

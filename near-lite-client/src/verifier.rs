@@ -4,7 +4,7 @@ use crate::{
 };
 use alloc::string::String;
 use near_merkle_proofs::ProofBatchVerifier;
-use near_primitives_wasm_friendly::{
+use near_primitives_wasm::{
 	CryptoHash, ExecutionOutcomeView, HostFunctions, LightClientBlockView, MerklePath,
 	OutcomeProof, ValidatorStakeView,
 };
@@ -194,7 +194,7 @@ mod test {
 		hash::CryptoHash as NearCryptoHash,
 		views::{ExecutionStatusView, LightClientBlockView as NearLightClientBlockView},
 	};
-	use near_primitives_wasm_friendly::{Direction, MerklePathItem, ValidatorStakeView};
+	use near_primitives_wasm::{Direction, MerklePathItem, ValidatorStakeView};
 
 	use std::{collections::BTreeMap, io};
 	#[derive(Debug, serde::Deserialize)]

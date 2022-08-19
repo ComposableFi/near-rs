@@ -31,7 +31,7 @@ pub mod test_utils;
 mod verifier;
 
 pub use checkpoint::TrustedCheckpoint;
-pub use near_primitives_wasm_friendly::{
+pub use near_primitives_wasm::{
 	CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
 };
 pub use verifier::{validate_head, validate_transaction, validate_transactions};
