@@ -308,6 +308,8 @@ mod tests {
 
 	use super::*;
 
+	// bridges the types from near primtives that are return in merklize into the near-rs native
+	// types (wasm friendly)
 	fn merklize_ext<T: BorshSerialize>(arr: &[T]) -> (CryptoHash, Vec<MerklePath>) {
 		let (root_hash, merkle_paths) = merklize(arr);
 		(
