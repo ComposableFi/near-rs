@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use borsh::BorshSerialize;
 use near_crypto::{PublicKey, Signature};
 use near_primitives::{
-    hash::CryptoHash,
-    views::{
-        validator_stake_view::ValidatorStakeView, LightClientBlockView as NearLightClientBlockView,
-    },
+	hash::CryptoHash,
+	views::{
+		validator_stake_view::ValidatorStakeView, LightClientBlockView as NearLightClientBlockView,
+	},
 };
 use sha2::{Digest, Sha256};
 
@@ -14,174 +14,161 @@ use crate::client_proof::{reconstruct_light_client_block_view_fields, LightClien
 
 #[derive(Debug)]
 pub struct LightClientState {
-    head: NearLightClientBlockView,
+	head: NearLightClientBlockView,
 
-    // QUESTION(s):
-    // are we going to validate transactions for older epochs?
-    // how many of these are we going to maintain in the future?
+	// QUESTION(s):
+	// are we going to validate transactions for older epochs?
+	// how many of these are we going to maintain in the future?
 
-    // NOTE: we are going to need the store the latest block of the epochs we are interested.
-    // this has to be validated
+	// NOTE: we are going to need the store the latest block of the epochs we are interested.
+	// this has to be validated
 
-    // Current epoch block producers
-    epoch_block_producers: HashMap<CryptoHash, Vec<ValidatorStakeView>>,
+	// Current epoch block producers
+	epoch_block_producers: HashMap<CryptoHash, Vec<ValidatorStakeView>>,
 }
 
 impl LightClientState {
-    // start from a valid checkpoint; it can be genesis
-    pub fn new_from_checkpoint(checkpoint: NearLightClientBlockView) -> Self {
-        log::trace!(
-            "instantiation new LightClient state with a checkpoint height={} on epoch={}",
-            checkpoint.inner_lite.height,
-            checkpoint.inner_lite.epoch_id
-        );
-        Self {
-            epoch_block_producers: [(
-                checkpoint.inner_lite.next_epoch_id,
-                checkpoint.next_bps.clone().unwrap(),
-            )]
-            .into_iter()
-            .collect::<HashMap<_, _>>(),
-            head: checkpoint,
-        }
-    }
-    // TODO: not sure how Polkadot works, but the return should be a `Result` instead
+	// start from a valid checkpoint; it can be genesis
+	pub fn new_from_checkpoint(checkpoint: NearLightClientBlockView) -> Self {
+		log::trace!(
+			"instantiation new LightClient state with a checkpoint height={} on epoch={}",
+			checkpoint.inner_lite.height,
+			checkpoint.inner_lite.epoch_id
+		);
+		Self {
+			epoch_block_producers: [(
+				checkpoint.inner_lite.next_epoch_id,
+				checkpoint.next_bps.clone().unwrap(),
+			)]
+			.into_iter()
+			.collect::<HashMap<_, _>>(),
+			head: checkpoint,
+		}
+	}
+	// TODO: not sure how Polkadot works, but the return should be a `Result` instead
 
-    //The light client updates its head with the information from LightClientBlockView iff:
+	//The light client updates its head with the information from LightClientBlockView iff:
 
-    // 1. The height of the block is higher than the height of the current head;
-    // 2. The epoch of the block is equal to the epoch_id or next_epoch_id known for the current head;
-    // 3. If the epoch of the block is equal to the next_epoch_id of the head, then next_bps is not None;
-    // 4. approvals_after_next contain valid signatures on approval_message from the block producers of the corresponding
-    // epoch
-    // 5. The signatures present in approvals_after_next correspond to more than 2/3 of the total stake (see next section).
-    // 6. If next_bps is not none, sha256(borsh(next_bps)) corresponds to the next_bp_hash in inner_lite.
+	// 1. The height of the block is higher than the height of the current head;
+	// 2. The epoch of the block is equal to the epoch_id or next_epoch_id known for the current
+	// head; 3. If the epoch of the block is equal to the next_epoch_id of the head, then next_bps
+	// is not None; 4. approvals_after_next contain valid signatures on approval_message from the
+	// block producers of the corresponding epoch
+	// 5. The signatures present in approvals_after_next correspond to more than 2/3 of the total
+	// stake (see next section). 6. If next_bps is not none, sha256(borsh(next_bps)) corresponds to
+	// the next_bp_hash in inner_lite.
 
-    // QUESTION: do we also want to pass the block hash received from the RPC?
-    // it's not on the spec, but it's an extra validation
-    pub fn validate_and_update_head(&mut self, block_view: &LightClientBlockView) -> bool {
-        log::trace!(
-            "Validating block view for height={} on epoch={}",
-            block_view.inner_lite.height,
-            block_view.inner_lite.epoch_id
-        );
-        let head = &mut self.head;
-        let (_current_block_hash, _next_block_hash, approval_message) =
-            reconstruct_light_client_block_view_fields(block_view);
+	// QUESTION: do we also want to pass the block hash received from the RPC?
+	// it's not on the spec, but it's an extra validation
+	pub fn validate_head(&mut self, block_view: &LightClientBlockView) -> bool {
+		log::trace!(
+			"Validating block view for height={} on epoch={}",
+			block_view.inner_lite.height,
+			block_view.inner_lite.epoch_id
+		);
+		let head = &mut self.head;
+		let (_current_block_hash, _next_block_hash, approval_message) =
+			reconstruct_light_client_block_view_fields(block_view);
 
-        // (1)
-        if block_view.inner_lite.height <= head.inner_lite.height {
-            return false;
-        }
+		// (1)
+		if block_view.inner_lite.height <= head.inner_lite.height {
+			return false
+		}
 
-        // (2)
-        if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
-            .contains(&block_view.inner_lite.epoch_id)
-        {
-            return false;
-        }
+		// (2)
+		if ![head.inner_lite.epoch_id, head.inner_lite.next_epoch_id]
+			.contains(&block_view.inner_lite.epoch_id)
+		{
+			return false
+		}
 
-        // (3)
-        if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id
-            && block_view.next_bps.is_none()
-        {
-            return false;
-        }
+		// (3)
+		if block_view.inner_lite.epoch_id == head.inner_lite.next_epoch_id &&
+			block_view.next_bps.is_none()
+		{
+			return false
+		}
 
-        //  (4) and (5)
-        let mut total_stake = 0;
-        let mut approved_stake = 0;
+		//  (4) and (5)
+		let mut total_stake = 0;
+		let mut approved_stake = 0;
 
-        let epoch_block_producers = &self.epoch_block_producers[&block_view.inner_lite.epoch_id];
+		let epoch_block_producers = &self.epoch_block_producers[&block_view.inner_lite.epoch_id];
 
-        for (maybe_signature, block_producer) in block_view
-            .approvals_after_next
-            .iter()
-            .zip(epoch_block_producers.iter())
-        {
-            let validator_stake = block_producer.clone().into_validator_stake();
-            let bp_stake = validator_stake.stake();
-            total_stake += bp_stake;
+		for (maybe_signature, block_producer) in
+			block_view.approvals_after_next.iter().zip(epoch_block_producers.iter())
+		{
+			let validator_stake = block_producer.clone().into_validator_stake();
+			let bp_stake = validator_stake.stake();
+			total_stake += bp_stake;
 
-            if maybe_signature.is_none() {
-                continue;
-            }
+			if maybe_signature.is_none() {
+				continue
+			}
 
-            approved_stake += bp_stake;
+			approved_stake += bp_stake;
 
-            if !verify_signature(
-                validator_stake.public_key(),
-                maybe_signature,
-                &approval_message,
-            ) {
-                return false;
-            }
-        }
+			if !verify_signature(validator_stake.public_key(), maybe_signature, &approval_message) {
+				return false
+			}
+		}
 
-        let threshold = total_stake * 2 / 3;
-        if approved_stake <= threshold {
-            return false;
-        }
+		let threshold = total_stake * 2 / 3;
+		if approved_stake <= threshold {
+			return false
+		}
 
-        // # (6)
-        if block_view.next_bps.is_some() {
-            if Sha256::digest(
-                block_view
-                    .next_bps
-                    .as_deref()
-                    .unwrap()
-                    .try_to_vec()
-                    .unwrap(),
-            )
-            .as_slice()
-                != block_view.inner_lite.next_bp_hash.as_ref()
-            {
-                return false;
-            }
-        }
+		// # (6)
+		if block_view.next_bps.is_some() {
+			if Sha256::digest(block_view.next_bps.as_deref().unwrap().try_to_vec().unwrap())
+				.as_slice() != block_view.inner_lite.next_bp_hash.as_ref()
+			{
+				return false
+			}
+		}
 
-        self.epoch_block_producers.insert(
-            block_view.inner_lite.next_epoch_id,
-            block_view.next_bps.as_ref().unwrap().clone(),
-        );
-        *head = NearLightClientBlockView::from(block_view);
-        log::trace!(
-            "Succesfully updated the head for height={} on epoch={}",
-            block_view.inner_lite.height,
-            block_view.inner_lite.epoch_id
-        );
-        true
-    }
+		self.epoch_block_producers.insert(
+			block_view.inner_lite.next_epoch_id,
+			block_view.next_bps.as_ref().unwrap().clone(),
+		);
+		*head = NearLightClientBlockView::from(block_view);
+		log::trace!(
+			"Succesfully updated the head for height={} on epoch={}",
+			block_view.inner_lite.height,
+			block_view.inner_lite.epoch_id
+		);
+		true
+	}
 
-    pub fn current_block_hash(&self) -> u64 {
-        self.head.inner_lite.height
-    }
+	pub fn current_block_hash(&self) -> u64 {
+		self.head.inner_lite.height
+	}
 }
 
 fn verify_signature(
-    public_key: &PublicKey,
-    maybe_signature: &Option<Signature>,
-    approval_message: impl AsRef<[u8]>,
+	public_key: &PublicKey,
+	maybe_signature: &Option<Signature>,
+	approval_message: impl AsRef<[u8]>,
 ) -> bool {
-    maybe_signature
-        .as_ref()
-        .map(|s| s.verify(approval_message.as_ref(), public_key))
-        .unwrap_or(false)
+	maybe_signature
+		.as_ref()
+		.map(|s| s.verify(approval_message.as_ref(), public_key))
+		.unwrap_or(false)
 }
 
 #[cfg(test)]
 mod tests {
-    use near_crypto::ED25519PublicKey;
-    use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
+	use near_crypto::ED25519PublicKey;
+	use near_sdk::{json_types::Base58CryptoHash, CryptoHash as JSONCryptoHash};
 
-    use crate::{
-        client_block::get_client_block_view,
-        client_proof::{next_block_hash, ApprovalInner},
-    };
+	use crate::{
+		client_block::get_client_block_view,
+		client_proof::{next_block_hash, ApprovalInner},
+	};
 
-    use super::*;
+	use super::*;
 
-    const CLIENT_RESPONSE_PREVIOUS_EPOCH: &'static str = r#"
+	const CLIENT_RESPONSE_PREVIOUS_EPOCH: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -701,8 +688,8 @@ mod tests {
         "id": "idontcare"
     }"#;
 
-    // Block #86455884
-    const CLIENT_BLOCK_RESPONSE: &'static str = r#"
+	// Block #86455884
+	const CLIENT_BLOCK_RESPONSE: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -1195,7 +1182,7 @@ mod tests {
     }
     "#;
 
-    const CLIENT_BLOCK_RESPONSE_NEXT_BLOCK: &'static str = r#"
+	const CLIENT_BLOCK_RESPONSE_NEXT_BLOCK: &'static str = r#"
     {
         "jsonrpc": "2.0",
         "result": {
@@ -1687,90 +1674,75 @@ mod tests {
         "id": "idontcare"
     }
     "#;
-    #[test]
-    fn test_validate_and_update_head_valid_block_next_epoch() {
-        let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
-        );
-        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
-        let mut light_client_state =
-            LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
+	#[test]
+	fn test_validate_head_valid_block_next_epoch() {
+		let client_block_view_checkpoint = NearLightClientBlockView::from(
+			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
+		);
+		let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
+		let mut light_client_state =
+			LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
-        let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
-        assert_eq!(
-            light_client_state.epoch_block_producers[&next_epoch_id].len(),
-            70
-        );
+		let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
+		assert_eq!(light_client_state.epoch_block_producers[&next_epoch_id].len(), 70);
 
-        assert!(light_client_state.validate_and_update_head(&client_block_view));
-    }
+		assert!(light_client_state.validate_head(&client_block_view));
+	}
 
-    #[test]
-    fn test_validate_and_update_head_valid_block_next_epoch_and_then_next_height() {
-        let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
-        );
-        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
-        let mut light_client_state =
-            LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
+	#[test]
+	fn test_validate_head_valid_block_next_epoch_and_then_next_height() {
+		let client_block_view_checkpoint = NearLightClientBlockView::from(
+			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
+		);
+		let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
+		let mut light_client_state =
+			LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
-        let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
-        assert_eq!(
-            light_client_state.epoch_block_producers[&next_epoch_id].len(),
-            70
-        );
+		let next_epoch_id = light_client_state.head.inner_lite.next_epoch_id;
+		assert_eq!(light_client_state.epoch_block_producers[&next_epoch_id].len(), 70);
 
-        assert!(light_client_state.validate_and_update_head(&client_block_view));
-        let client_block_view_next_height =
-            get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
-        assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
-    }
+		assert!(light_client_state.validate_head(&client_block_view));
+		let client_block_view_next_height =
+			get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
+		assert!(light_client_state.validate_head(&client_block_view_next_height));
+	}
 
-    #[test]
-    #[should_panic]
-    fn test_validate_and_update_head_invalid_block() {
-        let client_block_view_checkpoint = NearLightClientBlockView::from(
-            &get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
-        );
-        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
-        let mut light_client_state =
-            LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
+	#[test]
+	#[should_panic]
+	fn test_validate_head_invalid_block() {
+		let client_block_view_checkpoint = NearLightClientBlockView::from(
+			&get_client_block_view(CLIENT_RESPONSE_PREVIOUS_EPOCH).unwrap(),
+		);
+		let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
+		let mut light_client_state =
+			LightClientState::new_from_checkpoint(client_block_view_checkpoint.into());
 
-        let client_block_view_next_height =
-            get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
-        assert!(light_client_state.validate_and_update_head(&client_block_view_next_height));
-        assert!(light_client_state.validate_and_update_head(&client_block_view));
-    }
+		let client_block_view_next_height =
+			get_client_block_view(CLIENT_BLOCK_RESPONSE_NEXT_BLOCK).unwrap();
+		assert!(light_client_state.validate_head(&client_block_view_next_height));
+		assert!(light_client_state.validate_head(&client_block_view));
+	}
 
-    #[test]
-    fn test_verify_signature() {
-        let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
-        let next_block_hash = next_block_hash(
-            client_block_view.next_block_inner_hash,
-            client_block_view.current_block_hash(),
-        );
-        let signature_hash = bs58::decode("5X6Fq8PeNtc6sv84QeKPd5MG4La9K3rBMDYbKtkJ8VZcC6k1ehFd9NP3PuBqwL5gMqoqj7nkzSQZzJzKDJLPJRCA").into_vec().unwrap();
-        let pubkey_hash = JSONCryptoHash::from(
-            Base58CryptoHash::try_from("Fy6quR4nBhrEnDyEuPWoAdBP5tzNbuEZsEd91Q5pQnXB").unwrap(),
-        );
-        let public_key = PublicKey::ED25519(ED25519PublicKey::try_from(pubkey_hash).unwrap());
-        let signature =
-            Signature::from_parts(near_crypto::KeyType::ED25519, signature_hash.as_ref()).unwrap();
+	#[test]
+	fn test_verify_signature() {
+		let client_block_view = get_client_block_view(CLIENT_BLOCK_RESPONSE).unwrap();
+		let next_block_hash = next_block_hash(
+			client_block_view.next_block_inner_hash,
+			client_block_view.current_block_hash(),
+		);
+		let signature_hash = bs58::decode("5X6Fq8PeNtc6sv84QeKPd5MG4La9K3rBMDYbKtkJ8VZcC6k1ehFd9NP3PuBqwL5gMqoqj7nkzSQZzJzKDJLPJRCA").into_vec().unwrap();
+		let pubkey_hash = JSONCryptoHash::from(
+			Base58CryptoHash::try_from("Fy6quR4nBhrEnDyEuPWoAdBP5tzNbuEZsEd91Q5pQnXB").unwrap(),
+		);
+		let public_key = PublicKey::ED25519(ED25519PublicKey::try_from(pubkey_hash).unwrap());
+		let signature =
+			Signature::from_parts(near_crypto::KeyType::ED25519, signature_hash.as_ref()).unwrap();
 
-        let approval_message = [
-            ApprovalInner::Endorsement(next_block_hash)
-                .try_to_vec()
-                .unwrap(),
-            (client_block_view.inner_lite.height + 2)
-                .to_le()
-                .try_to_vec()
-                .unwrap(),
-        ]
-        .concat();
-        assert!(verify_signature(
-            &public_key,
-            &Some(signature),
-            approval_message
-        ));
-    }
+		let approval_message = [
+			ApprovalInner::Endorsement(next_block_hash).try_to_vec().unwrap(),
+			(client_block_view.inner_lite.height + 2).to_le().try_to_vec().unwrap(),
+		]
+		.concat();
+		assert!(verify_signature(&public_key, &Some(signature), approval_message));
+	}
 }

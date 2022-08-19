@@ -5,20 +5,20 @@
 //! there's also the possiblity to feed the client with a checkpoint. A checkpoint
 //! is a state of the chain that's considered **valid**.
 
-use crate::types::LightClientBlockView;
+use near_primitives_wasm::LightClientBlockView;
 
 pub struct TrustedCheckpoint(pub LightClientBlockView);
 
 #[cfg(test)]
 impl TrustedCheckpoint {
-    #[cfg(test)]
-    pub fn new_for_test() -> Self {
-        Self(LightClientBlockView::new_for_test())
-    }
+	#[cfg(test)]
+	pub fn new_for_test() -> Self {
+		Self(LightClientBlockView::new_for_test())
+	}
 }
 
 impl From<TrustedCheckpoint> for LightClientBlockView {
-    fn from(s: TrustedCheckpoint) -> Self {
-        s.0
-    }
+	fn from(s: TrustedCheckpoint) -> Self {
+		s.0
+	}
 }

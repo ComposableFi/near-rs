@@ -13,36 +13,42 @@
 //! let mut lite_client = LightClient::with_checkpoint(trusted_checkpoint);
 //!
 //! // there are two operations that can be performed:
-//! // `validate_and_update_head` & `validate_transaction`
+//! // `validate_head` & `validate_transaction`
 //!
-//! lite_client.validate_and_update_head(block_view);
+//! lite_client.validate_head(block_view);
 //! lite_client.validate_transaction(outcome_proof, outcome_root_proof, expected_block_outcome_root);
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 mod block_validation;
 mod checkpoint;
-mod client;
 mod error;
 mod merkle_tree;
-mod signature;
-mod storage;
-mod types;
+#[cfg(test)]
+pub mod test_utils;
 mod verifier;
 
-pub use block_validation::{Digest, SubstrateDigest};
 pub use checkpoint::TrustedCheckpoint;
-pub use client::LightClient;
-pub use storage::StateStorage;
-pub use types::{
-    CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
+pub use near_primitives_wasm::{
+	CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
 };
-pub use verifier::StateTransitionVerificator;
+pub use verifier::{validate_head, validate_transaction, validate_transactions};
+
+use crate::error::NearLiteClientError;
+
+pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 
 pub mod prelude {
-    pub use super::{
-        CryptoHash, Digest, LightClient, LightClientBlockView, MerklePath, OutcomeProof, Signature,
-        StateStorage, StateTransitionVerificator, SubstrateDigest, TrustedCheckpoint,
-        ValidatorStakeView,
-    };
+	pub use super::{
+		validate_head, validate_transaction, validate_transactions, CryptoHash,
+		LightClientBlockView, MerklePath, NearLiteClientTrait, OutcomeProof, Signature,
+		TrustedCheckpoint, ValidatorStakeView,
+	};
+}
+
+pub trait NearLiteClientTrait {
+	fn new_from_checkpoint(checkpoint: TrustedCheckpoint, heights_to_track: usize) -> Self;
+	fn current_block_height(&self) -> u64;
 }

@@ -1,11 +1,16 @@
-use borsh::maybestd::{io::Write, string::String};
-use sp_std::vec::Vec;
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::{block_validation::Digest, error::NearLiteClientError};
+pub mod host_functions;
+pub use host_functions::HostFunctions;
+
+use sp_io::crypto::ed25519_verify;
+use sp_std::prelude::*;
+
+use borsh::maybestd::{io::Write, string::String};
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
-pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 #[derive(Debug)]
 pub struct ConversionError(String);
 #[derive(Debug, Clone)]
@@ -13,68 +18,107 @@ pub struct PublicKey(pub [u8; 32]);
 
 #[derive(Debug, Clone)]
 pub enum Signature {
-    Ed25519(Ed25519Signature),
+	Ed25519(Ed25519Signature),
 }
 
 #[derive(
-    Debug, Ord, PartialOrd, PartialEq, Eq, Hash, Clone, Copy, BorshSerialize, BorshDeserialize,
+	Debug,
+	Default,
+	Ord,
+	PartialOrd,
+	PartialEq,
+	Eq,
+	Hash,
+	Clone,
+	Copy,
+	BorshSerialize,
+	BorshDeserialize,
 )]
 pub struct CryptoHash(pub [u8; 32]);
 
 impl Signature {
-    const LEN: usize = 64;
+	const LEN: usize = 64;
 
-    pub fn from_raw(raw: &[u8]) -> Self {
-        Self::Ed25519(Ed25519Signature::from_raw(raw.try_into().unwrap()))
-    }
+	pub fn from_raw(raw: &[u8]) -> Self {
+		Self::Ed25519(Ed25519Signature::from_raw(raw.try_into().unwrap()))
+	}
 
-    pub fn as_bytes(&self) -> &[u8] {
-        match self {
-            Self::Ed25519(inner) => &inner.0,
-        }
-    }
+	pub fn as_bytes(&self) -> &[u8] {
+		match self {
+			Self::Ed25519(inner) => &inner.0,
+		}
+	}
+
+	pub fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
+		match self {
+			Self::Ed25519(signature) => {
+				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key))
+			},
+		}
+	}
 }
 
 impl PublicKey {
-    const LEN: usize = 32;
+	const LEN: usize = 32;
 
-    pub fn from_raw(raw: &[u8]) -> Self {
-        Self(raw.try_into().unwrap())
-    }
+	pub fn from_raw(raw: &[u8]) -> Self {
+		Self(raw.try_into().unwrap())
+	}
 }
 
 impl TryFrom<&[u8]> for CryptoHash {
-    type Error = ConversionError;
-    fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-        if v.len() != 32 {
-            return Err(ConversionError("wrong size".into()));
-        }
-        let inner: [u8; 32] = v.try_into().unwrap();
-        Ok(CryptoHash(inner))
-    }
+	type Error = ConversionError;
+	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
+		if v.len() != 32 {
+			return Err(ConversionError("wrong size".into()));
+		}
+		let inner: [u8; 32] = v.try_into().unwrap();
+		Ok(CryptoHash(inner))
+	}
+}
+use sha2::Digest as Sha2Digest;
+
+impl CryptoHash {
+	// copy from near primitives
+	pub fn hash_bytes(bytes: &[u8]) -> CryptoHash {
+		CryptoHash(sha2::Sha256::digest(bytes).into())
+	}
+
+	pub fn hash_borsh<T: BorshSerialize>(value: &T) -> CryptoHash {
+		let serialized = value.try_to_vec().unwrap();
+		Self::hash_bytes(&serialized)
+	}
+
+	pub fn from_raw(raw: &[u8]) -> Self {
+		Self::try_from(raw).unwrap()
+	}
+
+	pub fn as_bytes(&self) -> &[u8] {
+		&self.0
+	}
 }
 
 impl AsRef<[u8]> for CryptoHash {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
+	fn as_ref(&self) -> &[u8] {
+		self.0.as_ref()
+	}
 }
 
 impl From<&PublicKey> for Ed25519Public {
-    fn from(pubkey: &PublicKey) -> Ed25519Public {
-        Ed25519Public(pubkey.0)
-    }
+	fn from(pubkey: &PublicKey) -> Ed25519Public {
+		Ed25519Public(pubkey.0)
+	}
 }
 
 impl TryFrom<&[u8]> for PublicKey {
-    type Error = ConversionError;
-    fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-        if v.len() != 32 {
-            return Err(ConversionError("wrong size".into()));
-        }
-        let inner: [u8; 32] = v.try_into().unwrap();
-        Ok(PublicKey(inner))
-    }
+	type Error = ConversionError;
+	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
+		if v.len() != 32 {
+			return Err(ConversionError("wrong size".into()));
+		}
+		let inner: [u8; 32] = v.try_into().unwrap();
+		Ok(PublicKey(inner))
+	}
 }
 
 pub type BlockHeight = u64;
@@ -84,147 +128,146 @@ pub type Gas = u64;
 
 pub type MerkleHash = CryptoHash;
 
-#[derive(Debug, Clone, BorshDeserialize)]
-pub struct MerklePath(pub Vec<MerklePathItem>);
+pub type MerklePath = Vec<MerklePathItem>;
 
 #[derive(Debug, Clone)]
 pub struct LightClientBlockLiteView {
-    pub prev_block_hash: CryptoHash,
-    pub inner_rest_hash: CryptoHash,
-    pub inner_lite: BlockHeaderInnerLiteView,
+	pub prev_block_hash: CryptoHash,
+	pub inner_rest_hash: CryptoHash,
+	pub inner_lite: BlockHeaderInnerLiteView,
 }
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct LightClientBlockView {
-    pub prev_block_hash: CryptoHash,
-    pub next_block_inner_hash: CryptoHash,
-    pub inner_lite: BlockHeaderInnerLiteView,
-    pub inner_rest_hash: CryptoHash,
-    pub next_bps: Option<Vec<ValidatorStakeView>>,
-    pub approvals_after_next: Vec<Option<Signature>>,
+	pub prev_block_hash: CryptoHash,
+	pub next_block_inner_hash: CryptoHash,
+	pub inner_lite: BlockHeaderInnerLiteView,
+	pub inner_rest_hash: CryptoHash,
+	pub next_bps: Option<Vec<ValidatorStakeView>>,
+	pub approvals_after_next: Vec<Option<Signature>>,
 }
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct BlockHeaderInnerLiteView {
-    pub height: BlockHeight,
-    pub epoch_id: CryptoHash,
-    pub next_epoch_id: CryptoHash,
-    pub prev_state_root: CryptoHash,
-    pub outcome_root: CryptoHash,
-    pub timestamp: u64,
-    pub timestamp_nanosec: u64,
-    pub next_bp_hash: CryptoHash,
-    pub block_merkle_root: CryptoHash,
+	pub height: BlockHeight,
+	pub epoch_id: CryptoHash,
+	pub next_epoch_id: CryptoHash,
+	pub prev_state_root: CryptoHash,
+	pub outcome_root: CryptoHash,
+	pub timestamp: u64,
+	pub timestamp_nanosec: u64,
+	pub next_bp_hash: CryptoHash,
+	pub block_merkle_root: CryptoHash,
 }
 
 /// For some reason, when calculating the hash of the current block
 /// `timestamp_nanosec` is ignored
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct BlockHeaderInnerLiteViewFinal {
-    pub height: BlockHeight,
-    pub epoch_id: CryptoHash,
-    pub next_epoch_id: CryptoHash,
-    pub prev_state_root: CryptoHash,
-    pub outcome_root: CryptoHash,
-    pub timestamp: u64,
-    pub next_bp_hash: CryptoHash,
-    pub block_merkle_root: CryptoHash,
+	pub height: BlockHeight,
+	pub epoch_id: CryptoHash,
+	pub next_epoch_id: CryptoHash,
+	pub prev_state_root: CryptoHash,
+	pub outcome_root: CryptoHash,
+	pub timestamp: u64,
+	pub next_bp_hash: CryptoHash,
+	pub block_merkle_root: CryptoHash,
 }
 
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub enum ApprovalInner {
-    Endorsement(CryptoHash),
-    Skip(BlockHeight),
+	Endorsement(CryptoHash),
+	Skip(BlockHeight),
 }
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub enum ValidatorStakeView {
-    V1(ValidatorStakeViewV1),
+	V1(ValidatorStakeViewV1),
 }
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct ValidatorStakeViewV1 {
-    pub account_id: AccountId,
-    pub public_key: PublicKey,
-    pub stake: Balance,
+	pub account_id: AccountId,
+	pub public_key: PublicKey,
+	pub stake: Balance,
 }
 
 #[derive(Debug, Clone, BorshDeserialize)]
 pub struct ExecutionOutcomeView {
-    /// Logs from this transaction or receipt.
-    pub logs: Vec<String>,
-    /// Receipt IDs generated by this transaction or receipt.
-    pub receipt_ids: Vec<CryptoHash>,
-    /// The amount of the gas burnt by the given transaction or receipt.
-    pub gas_burnt: Gas,
-    /// The amount of tokens burnt corresponding to the burnt gas amount.
-    /// This value doesn't always equal to the `gas_burnt` multiplied by the gas price, because
-    /// the prepaid gas price might be lower than the actual gas price and it creates a deficit.
-    pub tokens_burnt: u128,
-    /// The id of the account on which the execution happens. For transaction this is signer_id,
-    /// for receipt this is receiver_id.
-    pub executor_id: AccountId,
-    /// Execution status. Contains the result in case of successful execution.
-    pub status: Vec<u8>, // NOTE(blas): no need to deserialize this one (in order to avoid having to define too many unnecessary structs)
+	/// Logs from this transaction or receipt.
+	pub logs: Vec<String>,
+	/// Receipt IDs generated by this transaction or receipt.
+	pub receipt_ids: Vec<CryptoHash>,
+	/// The amount of the gas burnt by the given transaction or receipt.
+	pub gas_burnt: Gas,
+	/// The amount of tokens burnt corresponding to the burnt gas amount.
+	/// This value doesn't always equal to the `gas_burnt` multiplied by the gas price, because
+	/// the prepaid gas price might be lower than the actual gas price and it creates a deficit.
+	pub tokens_burnt: u128,
+	/// The id of the account on which the execution happens. For transaction this is signer_id,
+	/// for receipt this is receiver_id.
+	pub executor_id: AccountId,
+	/// Execution status. Contains the result in case of successful execution.
+	pub status: Vec<u8>, /* NOTE(blas): no need to deserialize this one (in order to avoid
+	                      * having to define too many unnecessary structs) */
 }
 
-#[derive(Debug, BorshDeserialize)]
+#[derive(Clone, Debug, BorshDeserialize)]
 pub struct OutcomeProof {
-    pub proof: Vec<MerklePathItem>,
-    pub block_hash: CryptoHash,
-    pub id: CryptoHash,
-    pub outcome: ExecutionOutcomeView,
+	pub proof: Vec<MerklePathItem>,
+	pub block_hash: CryptoHash,
+	pub id: CryptoHash,
+	pub outcome: ExecutionOutcomeView,
 }
 
 #[cfg_attr(feature = "deepsize_feature", derive(deepsize::DeepSizeOf))]
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub enum Direction {
-    Left,
-    Right,
+	Left,
+	Right,
 }
 
 impl ValidatorStakeView {
-    pub fn into_validator_stake(self) -> ValidatorStakeViewV1 {
-        match self {
-            Self::V1(inner) => inner,
-        }
-    }
+	pub fn into_validator_stake(self) -> ValidatorStakeViewV1 {
+		match self {
+			Self::V1(inner) => inner,
+		}
+	}
 }
 #[cfg_attr(feature = "deepsize_feature", derive(deepsize::DeepSizeOf))]
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct MerklePathItem {
-    pub hash: MerkleHash,
-    pub direction: Direction,
+	pub hash: MerkleHash,
+	pub direction: Direction,
 }
 
 impl LightClientBlockView {
-    pub fn current_block_hash<D: Digest>(&self) -> CryptoHash {
-        // NOTE: current block hash does not contain `timestamp_nanosec` from BlockHeaderInnerLiteView
-        // hence the reason of creating a new struct (i.e: BlockHeaderInnerLiteViewFinal) to conform
-        // with the struct that is actually being hashed.
-        current_block_hash::<D>(
-            D::digest(
-                BlockHeaderInnerLiteViewFinal::from(self.inner_lite.clone())
-                    .try_to_vec()
-                    .unwrap(),
-            )
-            .as_slice()
-            .try_into()
-            .unwrap(),
-            self.inner_rest_hash,
-            self.prev_block_hash,
-        )
-    }
-    #[cfg(test)]
-    pub fn new_for_test() -> Self {
-        Self {
-            prev_block_hash: CryptoHash([0; 32]),
-            next_block_inner_hash: CryptoHash([0; 32]),
-            inner_lite: BlockHeaderInnerLiteView::new_for_test(),
-            inner_rest_hash: CryptoHash([0; 32]),
-            next_bps: Some(vec![]),
-            approvals_after_next: vec![],
-        }
-    }
+	pub fn current_block_hash<H: HostFunctions>(&self) -> CryptoHash {
+		// NOTE: current block hash does not contain `timestamp_nanosec` from
+		// BlockHeaderInnerLiteView hence the reason of creating a new struct (i.e:
+		// BlockHeaderInnerLiteViewFinal) to conform with the struct that is actually being hashed.
+		current_block_hash::<H>(
+			H::sha256(
+				&BlockHeaderInnerLiteViewFinal::from(self.inner_lite.clone())
+					.try_to_vec()
+					.unwrap(),
+			)
+			.as_slice()
+			.try_into()
+			.unwrap(),
+			self.inner_rest_hash,
+			self.prev_block_hash,
+		)
+	}
+	pub fn new_for_test() -> Self {
+		Self {
+			prev_block_hash: CryptoHash([0; 32]),
+			next_block_inner_hash: CryptoHash([0; 32]),
+			inner_lite: BlockHeaderInnerLiteView::new_for_test(),
+			inner_rest_hash: CryptoHash([0; 32]),
+			next_bps: Some(Vec::new()),
+			approvals_after_next: Vec::new(),
+		}
+	}
 }
 
 /// The hash of the block is:
@@ -236,155 +279,150 @@ impl LightClientBlockView {
 ///     )
 /// ),
 /// prev_hash
-///))
+/// ))
 /// ```
-fn current_block_hash<D: Digest>(
-    inner_lite_hash: CryptoHash,
-    inner_rest_hash: CryptoHash,
-    prev_block_hash: CryptoHash,
+fn current_block_hash<H: HostFunctions>(
+	inner_lite_hash: CryptoHash,
+	inner_rest_hash: CryptoHash,
+	prev_block_hash: CryptoHash,
 ) -> CryptoHash {
-    CryptoHash(
-        D::digest(
-            [
-                D::digest([inner_lite_hash.as_ref(), inner_rest_hash.as_ref()].concat()).as_ref(),
-                prev_block_hash.as_ref(),
-            ]
-            .concat(),
-        )
-        .as_slice()
-        .try_into()
-        .unwrap(),
-    )
+	CryptoHash(
+		H::sha256(
+			&[
+				H::sha256(&[inner_lite_hash.as_ref(), inner_rest_hash.as_ref()].concat()).as_ref(),
+				prev_block_hash.as_ref(),
+			]
+			.concat(),
+		)
+		.as_slice()
+		.try_into()
+		.unwrap(),
+	)
 }
 
 impl BlockHeaderInnerLiteView {
-    #[cfg(test)]
-    pub fn new_for_test() -> Self {
-        Self {
-            height: 1,
-            epoch_id: CryptoHash([0; 32]),
-            next_epoch_id: CryptoHash([0; 32]),
-            prev_state_root: CryptoHash([0; 32]),
-            outcome_root: CryptoHash([0; 32]),
-            timestamp: 1,
-            timestamp_nanosec: 0,
-            next_bp_hash: CryptoHash([0; 32]),
-            block_merkle_root: CryptoHash([0; 32]),
-        }
-    }
+	pub fn new_for_test() -> Self {
+		Self {
+			height: 1,
+			epoch_id: CryptoHash([0; 32]),
+			next_epoch_id: CryptoHash([0; 32]),
+			prev_state_root: CryptoHash([0; 32]),
+			outcome_root: CryptoHash([0; 32]),
+			timestamp: 1,
+			timestamp_nanosec: 0,
+			next_bp_hash: CryptoHash([0; 32]),
+			block_merkle_root: CryptoHash([0; 32]),
+		}
+	}
 }
 
 impl From<BlockHeaderInnerLiteView> for BlockHeaderInnerLiteViewFinal {
-    fn from(b: BlockHeaderInnerLiteView) -> Self {
-        Self {
-            height: b.height,
-            epoch_id: b.epoch_id,
-            next_epoch_id: b.next_epoch_id,
-            prev_state_root: b.prev_state_root,
-            outcome_root: b.outcome_root,
-            timestamp: b.timestamp,
-            next_bp_hash: b.next_bp_hash,
-            block_merkle_root: b.block_merkle_root,
-        }
-    }
+	fn from(b: BlockHeaderInnerLiteView) -> Self {
+		Self {
+			height: b.height,
+			epoch_id: b.epoch_id,
+			next_epoch_id: b.next_epoch_id,
+			prev_state_root: b.prev_state_root,
+			outcome_root: b.outcome_root,
+			timestamp: b.timestamp,
+			next_bp_hash: b.next_bp_hash,
+			block_merkle_root: b.block_merkle_root,
+		}
+	}
 }
 
 impl BorshDeserialize for Signature {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
-        let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
-        Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
-    }
+	fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
+		let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
+		let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
+		Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
+	}
 }
 
 impl BorshSerialize for Signature {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
-        match self {
-            Signature::Ed25519(signature) => {
-                BorshSerialize::serialize(&0u8, writer)?;
-                writer.write_all(&signature.0)?;
-            }
-        }
-        Ok(())
-    }
+	fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
+		match self {
+			Signature::Ed25519(signature) => {
+				BorshSerialize::serialize(&0u8, writer)?;
+				writer.write_all(&signature.0)?;
+			},
+		}
+		Ok(())
+	}
 }
 
 impl BorshSerialize for PublicKey {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
-        BorshSerialize::serialize(&0u8, writer)?;
-        writer.write_all(&self.0)?;
-        Ok(())
-    }
+	fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
+		BorshSerialize::serialize(&0u8, writer)?;
+		writer.write_all(&self.0)?;
+		Ok(())
+	}
 }
 
 impl BorshDeserialize for PublicKey {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
-        let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
-        Ok(Self(BorshDeserialize::deserialize(buf)?))
-    }
+	fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
+		let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
+		Ok(Self(BorshDeserialize::deserialize(buf)?))
+	}
 }
 #[cfg(test)]
 mod tests {
-    use std::{io, str::FromStr};
+	use sp_std::{str::FromStr, vec};
+	use std::io;
 
-    use super::*;
+	use super::*;
 
-    use near_primitives::views::LightClientBlockView as NearLightClientBlockView;
+	use near_primitives::views::LightClientBlockView as NearLightClientBlockView;
 
-    #[derive(Debug, serde::Deserialize)]
-    struct ResultFromRpc {
-        pub result: NearLightClientBlockView,
-    }
+	#[derive(Debug, serde::Deserialize)]
+	struct ResultFromRpc {
+		pub result: NearLightClientBlockView,
+	}
 
-    fn get_client_near_block_view(
-        client_block_response: &str,
-    ) -> io::Result<NearLightClientBlockView> {
-        Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result)
-    }
+	fn get_client_near_block_view(
+		client_block_response: &str,
+	) -> io::Result<NearLightClientBlockView> {
+		Ok(serde_json::from_str::<ResultFromRpc>(client_block_response)?.result)
+	}
 
-    #[test]
-    fn ensure_equality_on_signature_serialization() {
-        // given that this crate does not use `near-primitive`, we need to ensure that
-        // the serialized signature is equal to the output from the `near-primitive` crate
-        // because it is what it's used to calculate the `next_bp_hash`
-        use near_crypto::Signature as NearSignature;
-        let near_signature = NearSignature::from_str("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").unwrap();
-        let signature = Signature::from_raw(bs58::decode("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").into_vec().unwrap().as_ref());
-        let mut near_signature_buffer = vec![0; 64];
-        let mut signature_buffer = vec![0; 64];
-        near_signature
-            .serialize(&mut near_signature_buffer)
-            .unwrap();
-        signature.serialize(&mut signature_buffer).unwrap();
+	#[test]
+	fn ensure_equality_on_signature_serialization() {
+		// given that this crate does not use `near-primitive`, we need to ensure that
+		// the serialized signature is equal to the output from the `near-primitive` crate
+		// because it is what it's used to calculate the `next_bp_hash`
+		use near_crypto::Signature as NearSignature;
+		let near_signature = NearSignature::from_str("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").unwrap();
+		let signature = Signature::from_raw(bs58::decode("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").into_vec().unwrap().as_ref());
+		let mut near_signature_buffer = vec![0; 64];
+		let mut signature_buffer = vec![0; 64];
+		near_signature.serialize(&mut near_signature_buffer).unwrap();
+		signature.serialize(&mut signature_buffer).unwrap();
 
-        assert_eq!(signature_buffer, near_signature_buffer);
-    }
+		assert_eq!(signature_buffer, near_signature_buffer);
+	}
 
-    #[test]
-    fn ensure_equality_on_publickey_serialization() {
-        // given that this crate does not use `near-primitive`, we need to ensure that
-        // the serialized signature is equal to the output from the `near-primitive` crate
-        // because it is what it's used to calculate the `next_bp_hash`
-        use near_crypto::PublicKey as NearPublicKey;
-        let near_public_key =
-            NearPublicKey::from_str("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8").unwrap();
-        let pubkey_decoded = bs58::decode("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8")
-            .into_vec()
-            .unwrap();
-        let public_key = PublicKey::from_raw(pubkey_decoded.as_ref());
-        let mut near_public_key_buffer = vec![0; PublicKey::LEN];
-        let mut public_key_buffer = vec![0; PublicKey::LEN];
-        near_public_key
-            .serialize(&mut near_public_key_buffer)
-            .unwrap();
-        public_key.serialize(&mut public_key_buffer).unwrap();
+	#[test]
+	fn ensure_equality_on_publickey_serialization() {
+		// given that this crate does not use `near-primitive`, we need to ensure that
+		// the serialized signature is equal to the output from the `near-primitive` crate
+		// because it is what it's used to calculate the `next_bp_hash`
+		use near_crypto::PublicKey as NearPublicKey;
+		let near_public_key =
+			NearPublicKey::from_str("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8").unwrap();
+		let pubkey_decoded =
+			bs58::decode("D6Gq2RpUoDUojmE2vLpqQzuZwYmFPW6rMcXPrwRYhqN8").into_vec().unwrap();
+		let public_key = PublicKey::from_raw(pubkey_decoded.as_ref());
+		let mut near_public_key_buffer = vec![0; PublicKey::LEN];
+		let mut public_key_buffer = vec![0; PublicKey::LEN];
+		near_public_key.serialize(&mut near_public_key_buffer).unwrap();
+		public_key.serialize(&mut public_key_buffer).unwrap();
 
-        assert_eq!(near_public_key_buffer, public_key_buffer);
-    }
+		assert_eq!(near_public_key_buffer, public_key_buffer);
+	}
 
-    #[test]
-    fn test_ensure_deserialization_from_block_view_near_primitives() {
-        const CLIENT_BLOCK_VIEW: &str = r#"
+	#[test]
+	fn test_ensure_deserialization_from_block_view_near_primitives() {
+		const CLIENT_BLOCK_VIEW: &str = r#"
         {
             "jsonrpc": "2.0",
             "result": {
@@ -876,64 +914,57 @@ mod tests {
             "id": "idontcare"
         }
         "#;
-        let client_block_near_view_next_epoch =
-            get_client_near_block_view(CLIENT_BLOCK_VIEW).unwrap();
+		let client_block_near_view_next_epoch =
+			get_client_near_block_view(CLIENT_BLOCK_VIEW).unwrap();
 
-        let near_client_serialized = client_block_near_view_next_epoch.try_to_vec().unwrap();
-        let lite_client_block_view: LightClientBlockView =
-            BorshDeserialize::try_from_slice(near_client_serialized.as_ref()).unwrap();
+		let near_client_serialized = client_block_near_view_next_epoch.try_to_vec().unwrap();
+		let lite_client_block_view: LightClientBlockView =
+			BorshDeserialize::try_from_slice(near_client_serialized.as_ref()).unwrap();
 
-        let near_light_client_from_from_serialized = NearLightClientBlockView::try_from_slice(
-            lite_client_block_view.try_to_vec().unwrap().as_ref(),
-        )
-        .unwrap();
+		let near_light_client_from_from_serialized = NearLightClientBlockView::try_from_slice(
+			lite_client_block_view.try_to_vec().unwrap().as_ref(),
+		)
+		.unwrap();
 
-        assert_eq!(
-            near_light_client_from_from_serialized,
-            client_block_near_view_next_epoch
-        );
+		assert_eq!(near_light_client_from_from_serialized, client_block_near_view_next_epoch);
 
-        // assert_eq!(
-        //     near_client_serialized.try_to_vec().unwrap(),
-        //     lite_client_block_view.try_to_vec().unwrap()
-        // );
-    }
+		// assert_eq!(
+		//     near_client_serialized.try_to_vec().unwrap(),
+		//     lite_client_block_view.try_to_vec().unwrap()
+		// );
+	}
 
-    #[test]
-    fn test_ensure_deserialization_equality_of_signatures_with_near_primitives() {
-        use near_crypto::{KeyType, Signature as NearSignature};
-        let near_signature = NearSignature::from_str("4tC17LadtbHChDDvEJaGrsmc1Jj7F6PT7GQq9Ncd8tykG5tNYxfA9kXz57tvwRbzeZjqjPykAPY2KrN4XMs4M9sB").unwrap();
-        let near_signature_serialized = near_signature.try_to_vec().unwrap();
-        let signature = Signature::try_from_slice(&near_signature_serialized).unwrap();
+	#[test]
+	fn test_ensure_deserialization_equality_of_signatures_with_near_primitives() {
+		use near_crypto::{KeyType, Signature as NearSignature};
+		let near_signature = NearSignature::from_str("4tC17LadtbHChDDvEJaGrsmc1Jj7F6PT7GQq9Ncd8tykG5tNYxfA9kXz57tvwRbzeZjqjPykAPY2KrN4XMs4M9sB").unwrap();
+		let near_signature_serialized = near_signature.try_to_vec().unwrap();
+		let signature = Signature::try_from_slice(&near_signature_serialized).unwrap();
 
-        assert_eq!(
-            NearSignature::from_parts(KeyType::ED25519, signature.as_bytes()).unwrap(),
-            near_signature
-        )
-    }
+		assert_eq!(
+			NearSignature::from_parts(KeyType::ED25519, signature.as_bytes()).unwrap(),
+			near_signature
+		)
+	}
 
-    #[test]
-    fn test_ensure_deserialization_equality_of_public_keys_with_near_primitives() {
-        use near_crypto::{ED25519PublicKey, PublicKey as NearPublicKey};
-        let near_publickey =
-            NearPublicKey::from_str("811gesxXYdYeThry96ZiWn8chgWYNyreiScMkmxg4U9u").unwrap();
-        let near_public_key_serialized = near_publickey.try_to_vec().unwrap();
-        let public_key = PublicKey::try_from_slice(&near_public_key_serialized).unwrap();
-        let inner_near_public_key = ED25519PublicKey::try_from(public_key.0).unwrap();
-        assert_eq!(NearPublicKey::from(inner_near_public_key), near_publickey);
+	#[test]
+	fn test_ensure_deserialization_equality_of_public_keys_with_near_primitives() {
+		use near_crypto::{ED25519PublicKey, PublicKey as NearPublicKey};
+		let near_publickey =
+			NearPublicKey::from_str("811gesxXYdYeThry96ZiWn8chgWYNyreiScMkmxg4U9u").unwrap();
+		let near_public_key_serialized = near_publickey.try_to_vec().unwrap();
+		let public_key = PublicKey::try_from_slice(&near_public_key_serialized).unwrap();
+		let inner_near_public_key = ED25519PublicKey::try_from(public_key.0).unwrap();
+		assert_eq!(NearPublicKey::from(inner_near_public_key), near_publickey);
 
-        let public_key_encoded = bs58::decode("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su")
-            .into_vec()
-            .unwrap();
-        assert_eq!(
-            NearPublicKey::try_from_slice(
-                PublicKey::from_raw(&public_key_encoded)
-                    .try_to_vec()
-                    .unwrap()
-                    .as_ref()
-            )
-            .unwrap(),
-            NearPublicKey::from_str("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su").unwrap()
-        );
-    }
+		let public_key_encoded =
+			bs58::decode("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su").into_vec().unwrap();
+		assert_eq!(
+			NearPublicKey::try_from_slice(
+				PublicKey::from_raw(&public_key_encoded).try_to_vec().unwrap().as_ref()
+			)
+			.unwrap(),
+			NearPublicKey::from_str("ydgzeXHJ5Xyt7M1gXLxqLBW1Ejx6scNV5Nx2pxFM8su").unwrap()
+		);
+	}
 }
