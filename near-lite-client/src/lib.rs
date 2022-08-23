@@ -30,6 +30,7 @@ mod merkle_tree;
 pub mod test_utils;
 mod verifier;
 
+pub use block_validation::validate_light_block;
 pub use checkpoint::TrustedCheckpoint;
 pub use near_primitives_wasm::{
 	CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
