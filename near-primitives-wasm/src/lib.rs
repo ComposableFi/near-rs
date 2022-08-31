@@ -9,14 +9,17 @@ use sp_std::prelude::*;
 use borsh::maybestd::{io::Write, string::String};
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use sp_core::ed25519::{Public as Ed25519Public, Signature as Ed25519Signature};
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub struct ConversionError(String);
-#[derive(Debug, Clone)]
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKey(pub [u8; 32]);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Signature {
 	Ed25519(Ed25519Signature),
 }
@@ -33,6 +36,8 @@ pub enum Signature {
 	Copy,
 	BorshSerialize,
 	BorshDeserialize,
+	Serialize,
+	Deserialize,
 )]
 pub struct CryptoHash(pub [u8; 32]);
 
@@ -59,7 +64,7 @@ impl Signature {
 }
 
 impl PublicKey {
-	const LEN: usize = 32;
+	pub const LEN: usize = 32;
 
 	pub fn from_raw(raw: &[u8]) -> Self {
 		Self(raw.try_into().unwrap())
@@ -137,7 +142,7 @@ pub struct LightClientBlockLiteView {
 	pub inner_lite: BlockHeaderInnerLiteView,
 }
 
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct LightClientBlockView {
 	pub prev_block_hash: CryptoHash,
 	pub next_block_inner_hash: CryptoHash,
@@ -147,7 +152,7 @@ pub struct LightClientBlockView {
 	pub approvals_after_next: Vec<Option<Signature>>,
 }
 
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct BlockHeaderInnerLiteView {
 	pub height: BlockHeight,
 	pub epoch_id: CryptoHash,
@@ -180,11 +185,11 @@ pub enum ApprovalInner {
 	Skip(BlockHeight),
 }
 
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum ValidatorStakeView {
 	V1(ValidatorStakeViewV1),
 }
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ValidatorStakeViewV1 {
 	pub account_id: AccountId,
 	pub public_key: PublicKey,

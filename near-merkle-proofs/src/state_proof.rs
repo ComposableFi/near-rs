@@ -38,21 +38,21 @@ trait ReadBytesExtLittleEndian: Read {
 		let mut buff = [0u8; 1];
 		self.take(1)
 			.read_exact(&mut buff)
-			.map_err(|e| String::from("Could not read two bytes"))?;
+			.map_err(|_| String::from("Could not read two bytes"))?;
 		Ok(u8::from_le_bytes(buff))
 	}
 	fn read_u16(&mut self) -> Result<u16, String> {
 		let mut buff = [0u8; 2];
 		self.take(2)
 			.read_exact(&mut buff)
-			.map_err(|e| String::from("Could not read two bytes"))?;
+			.map_err(|_| String::from("Could not read two bytes"))?;
 		Ok(u16::from_le_bytes(buff))
 	}
 	fn read_u32(&mut self) -> Result<u32, String> {
 		let mut buff = [0u8; 4];
 		self.take(4)
 			.read_exact(&mut buff)
-			.map_err(|e| String::from("Could not read two bytes"))?;
+			.map_err(|_| String::from("Could not read two bytes"))?;
 		Ok(u32::from_le_bytes(buff))
 	}
 }

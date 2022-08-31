@@ -30,6 +30,9 @@ mod merkle_tree;
 pub mod test_utils;
 mod verifier;
 
+use alloc::collections::BTreeMap;
+
+pub use crate::error::NearLiteClientError;
 pub use block_validation::validate_light_block;
 pub use checkpoint::TrustedCheckpoint;
 pub use near_primitives_wasm::{
@@ -37,9 +40,8 @@ pub use near_primitives_wasm::{
 };
 pub use verifier::{validate_head, validate_transaction, validate_transactions};
 
-use crate::error::NearLiteClientError;
-
 pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
+pub type NearBlockProducers = BTreeMap<CryptoHash, Vec<ValidatorStakeView>>;
 
 pub mod prelude {
 	pub use super::{
