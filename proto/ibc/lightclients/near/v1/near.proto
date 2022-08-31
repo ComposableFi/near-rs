@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package ibc.lightclients.near.v1;
+
+import "google/protobuf/timestamp.proto";
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all)        = false;
+option (gogoproto.unmarshaler_all)      = false;
+option (gogoproto.sizer_all)            = false;
+option (gogoproto.goproto_registration) = true;
+option (gogoproto.protosizer_all)       = false;
+
+enum Direction {
+  DIRECTION_LEFT = 0;
+  DIRECTION_RIGHT = 1;
+}
+
+message MerklePathItem {
+  bytes hash = 1 [(gogoproto.customtype) = "SizedByte32"];
+  Direction direction = 2;
+}
+
+message Ed25519Signature {
+  bytes inner = 1 [(gogoproto.customtype) = "SizedByte64"];
+}
+
+message PublicKey {
+  bytes inner = 1 [(gogoproto.customtype) = "SizedByte32"];
+}
+
+message CryptoHash {
+  bytes inner = 1 [(gogoproto.customtype) = "SizedByte32"];
+}
+
+message Signature {
+  oneof inner {
+    Ed25519Signature ed25519 = 1;
+  }
+}
+
+message ValidatorStakeView {
+  oneof inner {
+    ValidatorStakeViewV1 v1 = 1;
+  }
+}
+
+message MaybeSignature {
+  Signature next_bps = 1 [(gogoproto.nullable) = false];
+}
+
+message LightClientBlockView {
+  CryptoHash prev_block_hash = 1;
+  CryptoHash next_block_inner_hash = 2;
+  BlockHeaderInnerLiteView inner_lite = 3;
+  CryptoHash inner_rest_hash = 4;
+  repeated ValidatorStakeView next_bps = 5 [(gogoproto.nullable) = false];
+  repeated MaybeSignature approvals_after_next = 6;
+}
+
+message BlockHeaderInnerLiteView {
+  uint64 height = 1;
+  CryptoHash epoch_id = 2;
+  CryptoHash next_epoch_id = 3;
+  CryptoHash prev_state_root = 4;
+  CryptoHash outcome_root = 5;
+  uint64 timestamp = 6;
+  uint64 timestamp_nanosec = 7;
+  CryptoHash next_bp_hash = 8;
+  CryptoHash block_merkle_root = 9;
+}
+
+message ValidatorStakeViewV1 {
+  string account_id = 1;
+  PublicKey public_key = 2;
+  // uint128
+  bytes stake = 3;
+}
+
+message MerklePath {
+  repeated MerklePathItem inner = 1;
+}
+
+message NearHeader {
+  repeated LightClientBlockView inner = 1;
+  repeated MerklePath batch_proof = 2;
+}
+
+message NearBlockProducersForEpoch {
+  bytes epoch_id = 1;
+  repeated ValidatorStakeView validator_stakes = 2;
+}
+
+// ClientState from Beefy tracks the current validator set, latest height,
+// and a possible frozen height.
+message ClientState {
+  option (gogoproto.goproto_getters) = false;
+
+  // Latest known block
+  LightClientBlockView head = 1;
+
+  // Current epoch number
+  uint64 epoch_num = 2;
+
+  // Previous epoch number
+  uint64 prev_epoch_num = 3;
+
+  // Current epoch
+  CryptoHash current_epoch = 4;
+
+  // Next epoch
+  CryptoHash next_epoch = 5;
+
+  /// Block producers for an epoch
+  repeated NearBlockProducersForEpoch epoch_block_producers = 6;
+
+  /// Previous (to the head) lite block
+  repeated LightClientBlockView prev_lite_block = 7;
+
+  // Block height when the client was frozen due to a misbehaviour
+  uint64 frozen_height = 8;
+}
+
+// ConsensusState defines the consensus state from Tendermint.
+message ConsensusState {
+  option (gogoproto.goproto_getters) = false;
+
+  // timestamp that corresponds to the block height in which the ConsensusState
+  // was stored.
+  google.protobuf.Timestamp timestamp = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+
+  // packet commitment root
+  bytes root = 2;
+}
