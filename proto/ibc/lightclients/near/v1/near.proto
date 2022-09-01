@@ -22,21 +22,9 @@ message MerklePathItem {
   Direction direction = 2;
 }
 
-message Ed25519Signature {
-  bytes inner = 1 [(gogoproto.customtype) = "SizedByte64"];
-}
-
-message PublicKey {
-  bytes inner = 1 [(gogoproto.customtype) = "SizedByte32"];
-}
-
-message CryptoHash {
-  bytes inner = 1 [(gogoproto.customtype) = "SizedByte32"];
-}
-
 message Signature {
   oneof inner {
-    Ed25519Signature ed25519 = 1;
+    bytes ed25519 = 1 [(gogoproto.customtype) = "SizedByte64"];
   }
 }
 
@@ -47,33 +35,37 @@ message ValidatorStakeView {
 }
 
 message MaybeSignature {
-  Signature next_bps = 1 [(gogoproto.nullable) = false];
+  Signature inner = 1;
+}
+
+message BlockProducers {
+  repeated ValidatorStakeView bps = 1;
 }
 
 message LightClientBlockView {
-  CryptoHash prev_block_hash = 1;
-  CryptoHash next_block_inner_hash = 2;
+  bytes prev_block_hash = 1 [(gogoproto.customtype) = "SizedByte32"];
+  bytes next_block_inner_hash = 2 [(gogoproto.customtype) = "SizedByte32"];
   BlockHeaderInnerLiteView inner_lite = 3;
-  CryptoHash inner_rest_hash = 4;
-  repeated ValidatorStakeView next_bps = 5 [(gogoproto.nullable) = false];
+  bytes inner_rest_hash = 4 [(gogoproto.customtype) = "SizedByte32"];
+  BlockProducers next_bps = 5;
   repeated MaybeSignature approvals_after_next = 6;
 }
 
 message BlockHeaderInnerLiteView {
   uint64 height = 1;
-  CryptoHash epoch_id = 2;
-  CryptoHash next_epoch_id = 3;
-  CryptoHash prev_state_root = 4;
-  CryptoHash outcome_root = 5;
+  bytes epoch_id = 2 [(gogoproto.customtype) = "SizedByte32"];
+  bytes next_epoch_id = 3 [(gogoproto.customtype) = "SizedByte32"];
+  bytes prev_state_root = 4 [(gogoproto.customtype) = "SizedByte32"];
+  bytes outcome_root = 5 [(gogoproto.customtype) = "SizedByte32"];
   uint64 timestamp = 6;
   uint64 timestamp_nanosec = 7;
-  CryptoHash next_bp_hash = 8;
-  CryptoHash block_merkle_root = 9;
+  bytes next_bp_hash = 8 [(gogoproto.customtype) = "SizedByte32"];
+  bytes block_merkle_root = 9 [(gogoproto.customtype) = "SizedByte32"];
 }
 
 message ValidatorStakeViewV1 {
   string account_id = 1;
-  PublicKey public_key = 2;
+  bytes public_key = 2 [(gogoproto.customtype) = "SizedByte32"];
   // uint128
   bytes stake = 3;
 }
@@ -107,10 +99,10 @@ message ClientState {
   uint64 prev_epoch_num = 3;
 
   // Current epoch
-  CryptoHash current_epoch = 4;
+  bytes current_epoch = 4;
 
   // Next epoch
-  CryptoHash next_epoch = 5;
+  bytes next_epoch = 5;
 
   /// Block producers for an epoch
   repeated NearBlockProducersForEpoch epoch_block_producers = 6;

@@ -8,9 +8,9 @@ homepage = "https://composable.finance"
 
 [dependencies]
 borsh = { version = "0.9.3", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 near-primitives-wasm = {path = "../near-primitives-wasm", default-features = false}
 near-merkle-proofs = { path = "../near-merkle-proofs", default-features = false }
 sha2 = { version = "0.10.2", default-features = false }
