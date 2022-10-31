@@ -4,9 +4,7 @@ use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use crate::{error::NearLiteClientError, LiteClientResult};
 
-use near_primitives_wasm::{
-	ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView,
-};
+use near_primitives_wasm::{ApprovalInner, CryptoHash, LightClientBlockView, ValidatorStakeView};
 
 use borsh::BorshSerialize;
 

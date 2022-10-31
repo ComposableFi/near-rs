@@ -17,7 +17,7 @@ pub struct ConversionError(String);
 pub struct PublicKey(pub [u8; 32]);
 
 #[derive(Debug, Clone)]
-pub enum Signature {
+pub enum NearSignature {
 	Ed25519(Ed25519Signature),
 }
 
@@ -36,17 +36,10 @@ pub enum Signature {
 )]
 pub struct CryptoHash(pub [u8; 32]);
 
-impl Signature {
+impl NearSignature {
 	const LEN: usize = 64;
-
 	pub fn from_raw(raw: &[u8]) -> Self {
 		Self::Ed25519(Ed25519Signature::from_raw(raw.try_into().unwrap()))
-	}
-
-	pub fn as_bytes(&self) -> &[u8] {
-		match self {
-			Self::Ed25519(inner) => &inner.0,
-		}
 	}
 
 	pub fn verify(&self, data: impl AsRef<[u8]>, public_key: PublicKey) -> bool {
@@ -54,6 +47,22 @@ impl Signature {
 			Self::Ed25519(signature) => {
 				ed25519_verify(signature, data.as_ref(), &Ed25519Public::from(&public_key))
 			},
+		}
+	}
+}
+
+impl signature::Signature for NearSignature {
+	fn from_bytes(data: &[u8]) -> Result<Self, ed25519::Error> {
+		Ok(Self::Ed25519(Ed25519Signature::from_raw(
+			data.try_into().map_err(|_| ed25519::Error::default())?,
+		)))
+	}
+}
+
+impl AsRef<[u8]> for NearSignature {
+	fn as_ref(&self) -> &[u8] {
+		match self {
+			Self::Ed25519(signature) => signature.as_ref(),
 		}
 	}
 }
@@ -144,7 +153,7 @@ pub struct LightClientBlockView {
 	pub inner_lite: BlockHeaderInnerLiteView,
 	pub inner_rest_hash: CryptoHash,
 	pub next_bps: Option<Vec<ValidatorStakeView>>,
-	pub approvals_after_next: Vec<Option<Signature>>,
+	pub approvals_after_next: Vec<Option<NearSignature>>,
 }
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
@@ -331,18 +340,18 @@ impl From<BlockHeaderInnerLiteView> for BlockHeaderInnerLiteViewFinal {
 	}
 }
 
-impl BorshDeserialize for Signature {
+impl BorshDeserialize for NearSignature {
 	fn deserialize(buf: &mut &[u8]) -> Result<Self, borsh::maybestd::io::Error> {
 		let _key_type: [u8; 1] = BorshDeserialize::deserialize(buf)?;
 		let array: [u8; Self::LEN] = BorshDeserialize::deserialize(buf)?;
-		Ok(Signature::Ed25519(Ed25519Signature::from_raw(array)))
+		Ok(NearSignature::Ed25519(Ed25519Signature::from_raw(array)))
 	}
 }
 
-impl BorshSerialize for Signature {
+impl BorshSerialize for NearSignature {
 	fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), borsh::maybestd::io::Error> {
 		match self {
-			Signature::Ed25519(signature) => {
+			NearSignature::Ed25519(signature) => {
 				BorshSerialize::serialize(&0u8, writer)?;
 				writer.write_all(&signature.0)?;
 			},
@@ -390,9 +399,9 @@ mod tests {
 		// given that this crate does not use `near-primitive`, we need to ensure that
 		// the serialized signature is equal to the output from the `near-primitive` crate
 		// because it is what it's used to calculate the `next_bp_hash`
-		use near_crypto::Signature as NearSignature;
-		let near_signature = NearSignature::from_str("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").unwrap();
-		let signature = Signature::from_raw(bs58::decode("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").into_vec().unwrap().as_ref());
+		use near_crypto::Signature as NearCryptoSignature;
+		let near_signature = NearCryptoSignature::from_str("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").unwrap();
+		let signature = NearSignature::from_raw(bs58::decode("2evZLyx1HQHy8QuJ5AjZ4LV5ixgQF4RoXjjTQ58ekuQ4NqjrYiY89UXBH9nR4oQfgSzm3beUQiLfjrDzQG5dBdVQ").into_vec().unwrap().as_ref());
 		let mut near_signature_buffer = vec![0; 64];
 		let mut signature_buffer = vec![0; 64];
 		near_signature.serialize(&mut near_signature_buffer).unwrap();
@@ -936,13 +945,13 @@ mod tests {
 
 	#[test]
 	fn test_ensure_deserialization_equality_of_signatures_with_near_primitives() {
-		use near_crypto::{KeyType, Signature as NearSignature};
-		let near_signature = NearSignature::from_str("4tC17LadtbHChDDvEJaGrsmc1Jj7F6PT7GQq9Ncd8tykG5tNYxfA9kXz57tvwRbzeZjqjPykAPY2KrN4XMs4M9sB").unwrap();
+		use near_crypto::{KeyType, Signature as NearCryptoSignature};
+		let near_signature = NearCryptoSignature::from_str("4tC17LadtbHChDDvEJaGrsmc1Jj7F6PT7GQq9Ncd8tykG5tNYxfA9kXz57tvwRbzeZjqjPykAPY2KrN4XMs4M9sB").unwrap();
 		let near_signature_serialized = near_signature.try_to_vec().unwrap();
-		let signature = Signature::try_from_slice(&near_signature_serialized).unwrap();
+		let signature = NearSignature::try_from_slice(&near_signature_serialized).unwrap();
 
 		assert_eq!(
-			NearSignature::from_parts(KeyType::ED25519, signature.as_bytes()).unwrap(),
+			NearCryptoSignature::from_parts(KeyType::ED25519, signature.as_ref()).unwrap(),
 			near_signature
 		)
 	}

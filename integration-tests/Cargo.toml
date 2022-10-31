@@ -16,3 +16,6 @@ near-primitives-wasm = {path = "../near-primitives-wasm"}
 near-lite-relayer = {path = "../near-lite-relayer"}
 tokio = { version = "1.17.0", features = ["full"] }
 sha2 = { version = "0.10.2"}
+
+# tendermint
+tendermint = { git = "https://github.com/blasrodri/tendermint-rs", rev = "8048e4de023cef94b59f3d526e24d612a88dd27b"}

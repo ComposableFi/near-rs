@@ -32,7 +32,7 @@ mod verifier;
 
 pub use checkpoint::TrustedCheckpoint;
 pub use near_primitives_wasm::{
-	CryptoHash, LightClientBlockView, MerklePath, OutcomeProof, Signature, ValidatorStakeView,
+	CryptoHash, LightClientBlockView, MerklePath, NearSignature, OutcomeProof, ValidatorStakeView,
 };
 pub use verifier::{validate_head, validate_transaction, validate_transactions};
 
@@ -43,7 +43,7 @@ pub type LiteClientResult<T> = Result<T, NearLiteClientError>;
 pub mod prelude {
 	pub use super::{
 		validate_head, validate_transaction, validate_transactions, CryptoHash,
-		LightClientBlockView, MerklePath, NearLiteClientTrait, OutcomeProof, Signature,
+		LightClientBlockView, MerklePath, NearLiteClientTrait, NearSignature, OutcomeProof,
 		TrustedCheckpoint, ValidatorStakeView,
 	};
 }
