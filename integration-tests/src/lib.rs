@@ -6,9 +6,20 @@ use alloc::collections::BTreeMap;
 use near_lite_client::{
 	CryptoHash, LightClientBlockView, NearLiteClientTrait, TrustedCheckpoint, ValidatorStakeView,
 };
-use near_primitives_wasm::HostFunctions;
+use near_primitives_wasm::{
+	host_functions::{NearSha256, NearSignatureVerifier, NearSigner},
+	HostFunctions,
+};
+use tendermint::crypto::CryptoProvider;
 
 pub struct NearHostFunctions;
+
+impl CryptoProvider for NearHostFunctions {
+	type Sha256 = NearSha256;
+
+	type EcdsaSecp256k1Signer = NearSigner<Self::Sha256>;
+	type EcdsaSecp256k1Verifier = NearSignatureVerifier<Self::Sha256>;
+}
 
 impl HostFunctions for NearHostFunctions {
 	fn sha256(data: &[u8]) -> [u8; 32] {

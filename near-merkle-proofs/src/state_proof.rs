@@ -280,8 +280,18 @@ mod tests {
 	use core::str::FromStr;
 
 	use near_primitives::hash::CryptoHash as NearCryptoHash;
+	use near_primitives_wasm::host_functions::{NearSha256, NearSignatureVerifier, NearSigner};
+	use tendermint::crypto::CryptoProvider;
 
 	struct MockedHostFunctions;
+
+	impl CryptoProvider for MockedHostFunctions {
+		type Sha256 = NearSha256;
+
+		type EcdsaSecp256k1Signer = NearSigner<Self::Sha256>;
+		type EcdsaSecp256k1Verifier = NearSignatureVerifier<Self::Sha256>;
+	}
+
 	impl HostFunctions for MockedHostFunctions {
 		fn sha256(data: &[u8]) -> [u8; 32] {
 			use sha2::Digest;
@@ -289,7 +299,7 @@ mod tests {
 		}
 
 		fn verify(
-			signature: near_primitives_wasm::Signature,
+			signature: near_primitives_wasm::NearSignature,
 			data: impl AsRef<[u8]>,
 			public_key: near_primitives_wasm::PublicKey,
 		) -> bool {

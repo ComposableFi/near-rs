@@ -304,7 +304,11 @@ fn hash_borsh<T: BorshSerialize, HF: HostFunctions>(items: &(T, T)) -> CryptoHas
 mod tests {
 	use borsh::BorshDeserialize;
 	use near_primitives::merkle::{compute_root_from_path_and_item, merklize};
-	use near_primitives_wasm::MerklePathItem;
+	use near_primitives_wasm::{
+		host_functions::{NearSha256, NearSignatureVerifier, NearSigner},
+		MerklePathItem,
+	};
+	use tendermint::crypto::CryptoProvider;
 
 	use super::*;
 
@@ -330,19 +334,14 @@ mod tests {
 	}
 
 	struct MockedHostFunctions;
-	impl HostFunctions for MockedHostFunctions {
-		fn sha256(data: &[u8]) -> [u8; 32] {
-			use sha2::Digest;
-			sha2::Sha256::digest(data).try_into().unwrap()
-		}
 
-		fn verify(
-			_signature: near_primitives_wasm::Signature,
-			_data: impl AsRef<[u8]>,
-			_public_key: near_primitives_wasm::PublicKey,
-		) -> bool {
-			todo!()
-		}
+	impl HostFunctions for MockedHostFunctions {}
+
+	impl CryptoProvider for MockedHostFunctions {
+		type Sha256 = NearSha256;
+
+		type EcdsaSecp256k1Signer = NearSigner<Self::Sha256>;
+		type EcdsaSecp256k1Verifier = NearSignatureVerifier<Self::Sha256>;
 	}
 
 	#[test]

@@ -13,6 +13,9 @@ core2 = {version = "0.3.2", default-features = false }
 
 near-primitives-wasm = {path = "../near-primitives-wasm", default-features = false }
 
+# tendermint
+tendermint = { git = "https://github.com/blasrodri/tendermint-rs", rev = "8048e4de023cef94b59f3d526e24d612a88dd27b"}
+
 [dev-dependencies]
 sha2 = "0.10.2"
 hex = "0.4"
